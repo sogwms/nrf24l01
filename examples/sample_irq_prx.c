@@ -1,6 +1,5 @@
 #include <rtthread.h>
 #include "nrf24l01.h"
-#include "drv_gpio.h"
 
 #include "sample.h"
 
@@ -65,7 +64,7 @@ static int nrf24l01_sample_init(void)
 {
     rt_thread_t thread;
 
-    thread = rt_thread_create("samNrfPtx", sample_nrf24l01_task, RT_NULL, 512, 3, 20);
+    thread = rt_thread_create("samNrfPRX", sample_nrf24l01_task, RT_NULL, 512, 3, 20);
     rt_thread_startup(thread);
 
     return RT_EOK;

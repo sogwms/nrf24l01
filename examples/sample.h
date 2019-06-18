@@ -1,3 +1,4 @@
+#include "drv_gpio.h"
 
 #define NRF24L01_CE_PIN         GET_PIN(A, 3)
 #define NRF24L01_SPI_DEVICE     "spi10"

@@ -1,6 +1,5 @@
 #include <rtthread.h>
 #include "nrf24l01.h"
-#include "drv_gpio.h"
 
 #include "sample.h"
 
