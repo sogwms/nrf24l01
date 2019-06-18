@@ -56,7 +56,7 @@ static int init(void *vp)
     }
 
     cfg.data_width = 8;
-    cfg.max_hz = 20 * 1000 * 1000;
+    cfg.max_hz = 10 * 1000 * 1000;
     cfg.mode = RT_SPI_MASTER | RT_SPI_MSB | RT_SPI_MODE_0;
     rt_spi_configure(spi_dev_nrf, &cfg);
 

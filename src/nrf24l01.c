@@ -391,7 +391,7 @@ int nrf24_ptx_run(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen)
             // send failed; try again
             reset_status(NRF24BITMASK_MAX_RT);
 
-            if (++trycnt > 16)
+            if (++trycnt > 6)
             {
                 hal_nrf24l01_port.reset_ce();
                 flush_tx_fifo();
