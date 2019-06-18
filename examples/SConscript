@@ -11,7 +11,8 @@ elif GetDepend(['NRF24L01_SAMPLE_IRQ_PTX']):
     src = ["sample_irq_ptx.c"]
 elif GetDepend(['NRF24L01_SAMPLE_IRQ_PRX']):
     src = ["sample_irq_prx.c"]
-
+else:
+    src = []
 
 group = DefineGroup('nRF24L01', src, depend = ['PKG_USING_NRF24L01_SAMPLE'], CPPPATH = CPPPATH)
 
