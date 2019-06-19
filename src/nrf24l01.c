@@ -364,6 +364,16 @@ uint16_t nrf24_get_errcnt(void)
     return temp;
 }
 
+void nrf24_power_up(void)
+{
+    _set_reg_bits(NRF24REG_CONFIG, NRF24BITMASK_PWR_UP);
+}
+
+void nrf24_power_down(void)
+{
+    _reset_reg_bits(NRF24REG_CONFIG, NRF24BITMASK_PWR_UP);
+}
+
 /**
  * @brief PTX(ROLE) run
  * @param[in] pb_tx: pointer of tx-buffer
@@ -378,6 +388,9 @@ uint16_t nrf24_get_errcnt(void)
 int nrf24_ptx_run(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen)
 {
     uint8_t sta, trycnt = 0, rlen = 0;
+
+    if (tlen > 32)
+        return -6;
 
     write_tx_payload(pb_tx, tlen);
 
@@ -449,6 +462,8 @@ int nrf24_prx_cycle(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen)
 
 void nrf24_prx_write_txbuffer(const uint8_t *pb, uint8_t len)
 {
+    if (len > 32)
+        return;
     write_ack_payload(0, pb, len);
 }
 
@@ -459,6 +474,9 @@ int nrf24_irq_ptx_run(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen, void (
 {
     int rlen = 0;
     uint8_t sta;
+
+    if (tlen > 32)
+        return -6;
 
     write_tx_payload(pb_tx, tlen);
     hal_nrf24l01_port.set_ce();

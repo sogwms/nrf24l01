@@ -85,6 +85,8 @@ extern void nrf24_prx_write_txbuffer(const uint8_t *pb, uint8_t len);
 extern int nrf24_irq_ptx_run(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen, void(*waitirq)(void));
 extern int nrf24_irq_prx_run(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen, void(*waitirq)(void));
 extern uint16_t nrf24_get_errcnt(void);
+extern void nrf24_power_up(void);
+extern void nrf24_power_down(void);
 #ifdef NRF24_USING_INFO_REPORT
 void nrf24_report(void);
 #endif // NRF24_USING_INFO_REPORT
