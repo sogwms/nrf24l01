@@ -7,6 +7,7 @@
  * Date           Author       Notes
  * 2019-05-23     sogwms       the first version
  */
+
 #include "nrf24l01_port.h"
 #include <rtdevice.h>
 #include "drv_gpio.h"
@@ -51,7 +52,8 @@ static int init(void *vp)
     nrf24l01_ce_pin = halcfg->ce_pin;
 
     spi_dev_nrf = (struct rt_spi_device *)rt_device_find(halcfg->spi_device_name);
-    if (!spi_dev_nrf) {
+    if (!spi_dev_nrf)
+    {
         rt_kprintf("[nrf24l01 port]error can't find device");
     }
 
@@ -66,11 +68,9 @@ static int init(void *vp)
     return 0;
 }
 
-hal_nrf24l01_port_t hal_nrf24l01_port = {
-    .send_then_recv = send_then_recv,
-    .send_then_send = send_then_send,
-    .write = write,
-    .set_ce = set_ce,
-    .reset_ce = reset_ce,
-    .init = init
-};
+hal_nrf24l01_port_t hal_nrf24l01_port = {.send_then_recv = send_then_recv,
+                                         .send_then_send = send_then_send,
+                                         .write = write,
+                                         .set_ce = set_ce,
+                                         .reset_ce = reset_ce,
+                                         .init = init};

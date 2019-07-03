@@ -7,10 +7,11 @@
  * Date           Author       Notes
  * 2019-05-23     sogwms       the first version
  */
+
 #ifndef __NRF24L01_H__
 #define __NRF24L01_H__
 
-// default: off
+/* default: off */
 // #define NRF24_USING_INFO_REPORT
 // #define NRF24_USING_SHELL_CMD
 
@@ -54,7 +55,7 @@ typedef enum
 
 typedef struct
 {
-    uint8_t ard : 4;    // meaning: (ard+1)*250us; value '0' isn't recommended
+    uint8_t ard : 4; /* meaning: (ard+1)*250us; value '0' isn't recommended */
     uint8_t arc : 4;
 } nrf24_esb_t;
 
@@ -67,7 +68,7 @@ typedef struct
     nrf24_adr_et adr;
     nrf24_crc_et crc;
     uint8_t address[5];
-    uint8_t channel;    //range: 0 ~ 127
+    uint8_t channel; /* range: 0 ~ 127 */
 
     uint8_t use_irq;
     void *ud;
@@ -89,6 +90,6 @@ extern void nrf24_power_up(void);
 extern void nrf24_power_down(void);
 #ifdef NRF24_USING_INFO_REPORT
 void nrf24_report(void);
-#endif // NRF24_USING_INFO_REPORT
+#endif /* NRF24_USING_INFO_REPORT */
 
-#endif // __NRF24L01_H__
+#endif /* __NRF24L01_H__ */

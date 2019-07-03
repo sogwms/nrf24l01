@@ -3,7 +3,6 @@
 
 #include "sample.h"
 
-
 static rt_sem_t nrfirq_sem;
 
 static void _irq_init(void);
@@ -23,21 +22,25 @@ void sample_nrf24l01_task(void *param)
     nrf24_default_param(&cfg);
     halcfg.ce_pin = NRF24L01_CE_PIN;
     halcfg.spi_device_name = NRF24L01_SPI_DEVICE;    
-    cfg.role = ROLE_PRX;    // PRX
+    cfg.role = ROLE_PRX; /* PRX */
     cfg.ud = &halcfg;
-    cfg.use_irq = 1;        // True    
+    cfg.use_irq = 1;     /* True */    
     nrf24_init(&cfg);
 
     while (1) {
         rlen = nrf24_irq_prx_run(rbuf, tbuf, rt_strlen((char *)tbuf), _waitirq);
-        if (rlen > 0) {       // received data (also indicating that the previous frame of data was sent complete)
+        /* received data (also indicating that the previous frame of data was sent complete) */
+        if (rlen > 0)
+        {
             rbuf[rlen] = '\0';
             rt_kputs((char *)rbuf);
             rt_sprintf((char *)tbuf, "i-am-PRX:%dth\r\n", cnt);
             cnt++;
         }
-        else {  // no data
-            ;
+        /* no receive data */
+        else
+        {
+            rt_kprintf("receive nothing.\r\n");
         }
     }
 }
@@ -65,7 +68,10 @@ static int nrf24l01_sample_init(void)
     rt_thread_t thread;
 
     thread = rt_thread_create("samNrfPRX", sample_nrf24l01_task, RT_NULL, 512, 3, 20);
-    rt_thread_startup(thread);
+    if (thread != RT_NULL)
+    {
+        rt_thread_startup(thread);
+    }
 
     return RT_EOK;
 }

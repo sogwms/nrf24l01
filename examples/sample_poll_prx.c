@@ -3,7 +3,6 @@
 
 #include "sample.h"
 
-
 void sample_nrf24l01_task(void *param)
 {
     struct hal_nrf24l01_port_cfg halcfg;
@@ -16,24 +15,29 @@ void sample_nrf24l01_task(void *param)
     nrf24_default_param(&cfg);
     halcfg.ce_pin = NRF24L01_CE_PIN;
     halcfg.spi_device_name = NRF24L01_SPI_DEVICE;    
-    cfg.role = ROLE_PRX;    // PRX
+    cfg.role = ROLE_PRX; /* PRX */
     cfg.ud = &halcfg;
-    cfg.use_irq = 0;        // False    
+    cfg.use_irq = 0;     /* False */    
     nrf24_init(&cfg);
 
-    while (1) {
-        // polling cycle
+    while (1)
+    {
+        /* polling cycle */
         rt_thread_mdelay(5);
 
         rlen = nrf24_prx_cycle(rbuf, tbuf, rt_strlen((char *)tbuf));
-        if (rlen > 0) {       // received data (also indicating that the previous frame of data was sent complete)
+        /* received data (also indicating that the previous frame of data was sent complete) */
+        if (rlen > 0)
+        {
             rbuf[rlen] = '\0';
             rt_kputs((char *)rbuf);
             rt_sprintf((char *)tbuf, "i-am-PRX:%dth\r\n", cnt);
             cnt++;
         }
-        else {  // no data
-            ;
+        /* no receive data */
+        else 
+        {
+            rt_kprintf("receive nothing.\r\n");
         }
     }
 }

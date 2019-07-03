@@ -8,8 +8,8 @@
  * 2019-05-23     sogwms       the first version
  */
 
-// note: 地址宽度:5
-// note: ACTIVATE command
+/* note: 地址宽度:5 */
+/* note: ACTIVATE command */
 
 /* Includes --------------------------------------------------------------------------------*/
 #include <rtthread.h>
@@ -18,100 +18,99 @@
 /* Exported types --------------------------------------------------------------------------*/
 /* Exported constants ----------------------------------------------------------------------*/
 /* Exported macro --------------------------------------------------------------------------*/ 
-///<命令映射  
-#define NRF24CMD_R_REG          0x00  // 读寄存器
-#define NRF24CMD_W_REG          0x20  // 写寄存器
-#define NRF24CMD_R_RX_PAYLOAD   0x61  // 读接收缓冲区
-#define NRF24CMD_W_TX_PAYLOAD   0xA0  // 写发送缓冲区
-#define NRF24CMD_FLUSH_TX       0xE1  // 清空发送FIFO
-#define NRF24CMD_FLUSH_RX       0xE2  // 清空接收FIFO
-#define NRF24CMD_REUSE_TX_PL    0xE3  // PTX模式下使用，重装载发送缓冲区
-#define NRF24CMD_ACTIVATE       0x50  // 使能命令，后接数据 0x73
-#define NRF24CMD_R_RX_PL_WID    0x60  // 读顶层接收FIFO大小
-#define NRF24CMD_W_ACK_PAYLOAD  0xA8  // RX模式下使用，写应答发送缓冲区
-///<寄存器映射
-#define NRF24REG_CONFIG         0x00  // 配置收发状态，CRC校验模式以及收发状态响应方式
-#define NRF24REG_EN_AA          0x01  // 自动应答功能设置
-#define NRF24REG_EN_RXADDR      0x02  // 可用信道设置
-#define NRF24REG_SETUP_AW       0x03  // 收发地址宽度设置
-#define NRF24REG_SETUP_RETR     0x04  // 自动重发功能设置
-#define NRF24REG_RF_CH          0x05  // 工作频率设置
-#define NRF24REG_RF_SETUP       0x06  // 发射速率、功耗功能设置
-#define NRF24REG_STATUS         0x07  // 状态寄存器
-#define NRF24REG_OBSERVE_TX     0x08  // 发送监测功能
-#define NRF24REG_RPD            0x09  // 接收功率检测           
-#define NRF24REG_RX_ADDR_P0     0x0A  // 频道0接收数据地址
-#define NRF24REG_RX_ADDR_P1     0x0B  // 频道1接收数据地址
-#define NRF24REG_RX_ADDR_P2     0x0C  // 频道2接收数据地址
-#define NRF24REG_RX_ADDR_P3     0x0D  // 频道3接收数据地址
-#define NRF24REG_RX_ADDR_P4     0x0E  // 频道4接收数据地址
-#define NRF24REG_RX_ADDR_P5     0x0F  // 频道5接收数据地址
-#define NRF24REG_TX_ADDR        0x10  // 发送地址寄存器
-#define NRF24REG_RX_PW_P0       0x11  // 接收频道0接收数据长度
-#define NRF24REG_RX_PW_P1       0x12  // 接收频道1接收数据长度
-#define NRF24REG_RX_PW_P2       0x13  // 接收频道2接收数据长度
-#define NRF24REG_RX_PW_P3       0x14  // 接收频道3接收数据长度
-#define NRF24REG_RX_PW_P4       0x15  // 接收频道4接收数据长度
-#define NRF24REG_RX_PW_P5       0x16  // 接收频道5接收数据长度
-#define NRF24REG_FIFO_STATUS    0x17  // FIFO栈入栈出状态寄存器设置
-#define NRF24REG_DYNPD          0x1C  // 动态数据包长度
-#define NRF24REG_FEATURE        0x1D  // 特点寄存器  
-///<寄存器功能位掩码部分映射
-//CONFIG
-#define NRF24BITMASK_RX_DR      ((uint8_t)(1<<6))  // 接收完成中断使能位
-#define NRF24BITMASK_TX_DS      ((uint8_t)(1<<5))  // 发送完成中断使能位
-#define NRF24BITMASK_MAX_RT     ((uint8_t)(1<<4))  // 达最大重发次数中断使能位
-#define NRF24BITMASK_EN_CRC     ((uint8_t)(1<<3))  // CRC使能位
-#define NRF24BITMASK_CRCO       ((uint8_t)(1<<2))  // CRC编码方式 （1B or 2B）
-#define NRF24BITMASK_PWR_UP     ((uint8_t)(1<<1))  // 上（掉）电
-#define NRF24BITMASK_PRIM_RX    ((uint8_t)(1))     // PR（T）X
-//SETUP_AW
-#define NRF24BITMASK_AW         ((uint8_t)(0x03))  // RX/TX地址宽度
-//SETUP_RETR
-#define NRF24BITMASK_ARD        ((uint8_t)(0xF0))  // 重发延时
-#define NRF24BITMASK_ARC        ((uint8_t)(0x0F))  // 重发最大次数
-//RF_CH
-#define NRF24BITMASK_RF_CH      ((uint8_t)(0x7F))  // 射频频道
-//RF_SETUP
-#define NRF24BITMASK_RF_DR      ((uint8_t)(1<<3))  // 空中速率
-#define NRF24BITMASK_RF_PWR     ((uint8_t)(0x06))  // 发射功率
-//STATUS
-#define NRF24BITMASK_RX_DR      ((uint8_t)(1<<6))  // 接收完成标志位
-#define NRF24BITMASK_TX_DS      ((uint8_t)(1<<5))  // 发送完成标志位
-#define NRF24BITMASK_MAX_RT     ((uint8_t)(1<<4))  // 最大重发次数标志位
-#define NRF24BITMASK_RX_P_NO    ((uint8_t)(0x0E))  // RX_FIFO状态标志区位
-#define NRF24BITMASK_TX_FULL    ((uint8_t)(1))     // TX_FIFO满标志位
-//OBSERVE_TX
-#define NRF24BITMASK_PLOS_CNT   ((uint8_t)(0xF0))  // 丢包计数
-#define NRF24BITMASK_ARC_CNT    ((uint8_t)(0x0F))  // 重发计数
-//CD
-#define NRF24BITMASK_CD         ((uint8_t)(1))     // 载波检测标志位
-//通用掩码，RX_PW_P[0::5] 掩码相同
-#define NRF24BITMASK_RX_PW_P_   ((uint8_t)(0x3F))  // 数据管道RX-Payload中的字节数
-//FIFO_STATUS
-#define NRF24BITMASK_TX_REUSE   ((uint8_t)(1<<6))  // 
-#define NRF24BITMASK_TX_FULL2    ((uint8_t)(1<<5)) // 
-#define NRF24BITMASK_TX_EMPTY   ((uint8_t)(1<<4))  // 
-#define NRF24BITMASK_RX_RXFULL  ((uint8_t)(1<<1))  // 
-#define NRF24BITMASK_RX_EMPTY   ((uint8_t)(1))     // 
-//FEATURE
-#define NRF24BITMASK_EN_DPL     ((uint8_t)(1<<2))  // 动态长度使能位
-#define NRF24BITMASK_EN_ACK_PAY ((uint8_t)(1<<1))  // Payload with ACK 使能位
-#define NRF24BITMASK_EN_DYN_ACK ((uint8_t)(1))     // W_TX_PAYLOAD_NOACK 命令使能位
-//通用掩码，适用于多个寄存器： EN_AA, EN_RXADDR, DYNPD
-#define NRF24BITMASK_PIPE_0     ((uint8_t)(1))     // 
-#define NRF24BITMASK_PIPE_1     ((uint8_t)(1<<1))  // 
-#define NRF24BITMASK_PIPE_2     ((uint8_t)(1<<2))  // 
-#define NRF24BITMASK_PIPE_3     ((uint8_t)(1<<3))  // 
-#define NRF24BITMASK_PIPE_4     ((uint8_t)(1<<4))  // 
-#define NRF24BITMASK_PIPE_5     ((uint8_t)(1<<5))  // 
+/* 命令映射 */  
+#define NRF24CMD_R_REG          0x00  /* 读寄存器 */
+#define NRF24CMD_W_REG          0x20  /* 写寄存器 */ 
+#define NRF24CMD_R_RX_PAYLOAD   0x61  /* 读接收缓冲区 */
+#define NRF24CMD_W_TX_PAYLOAD   0xA0  /* 写发送缓冲区 */
+#define NRF24CMD_FLUSH_TX       0xE1  /* 清空发送FIFO */
+#define NRF24CMD_FLUSH_RX       0xE2  /* 清空接收FIFO */
+#define NRF24CMD_REUSE_TX_PL    0xE3  /* PTX模式下使用，重装载发送缓冲区 */
+#define NRF24CMD_ACTIVATE       0x50  /* 使能命令，后接数据 0x73 */
+#define NRF24CMD_R_RX_PL_WID    0x60  /* 读顶层接收FIFO大小 */
+#define NRF24CMD_W_ACK_PAYLOAD  0xA8  /* RX模式下使用，写应答发送缓冲区 */
+/* 寄存器映射 */
+#define NRF24REG_CONFIG         0x00  /* 配置收发状态，CRC校验模式以及收发状态响应方式 */
+#define NRF24REG_EN_AA          0x01  /* 自动应答功能设置 */
+#define NRF24REG_EN_RXADDR      0x02  /* 可用信道设置 */
+#define NRF24REG_SETUP_AW       0x03  /* 收发地址宽度设置 */
+#define NRF24REG_SETUP_RETR     0x04  /* 自动重发功能设置 */
+#define NRF24REG_RF_CH          0x05  /* 工作频率设置 */
+#define NRF24REG_RF_SETUP       0x06  /* 发射速率、功耗功能设置 */
+#define NRF24REG_STATUS         0x07  /* 状态寄存器 */
+#define NRF24REG_OBSERVE_TX     0x08  /* 发送监测功能 */
+#define NRF24REG_RPD            0x09  /* 接收功率检测 */           
+#define NRF24REG_RX_ADDR_P0     0x0A  /* 频道0接收数据地址 */
+#define NRF24REG_RX_ADDR_P1     0x0B  /* 频道1接收数据地址 */
+#define NRF24REG_RX_ADDR_P2     0x0C  /* 频道2接收数据地址 */
+#define NRF24REG_RX_ADDR_P3     0x0D  /* 频道3接收数据地址 */
+#define NRF24REG_RX_ADDR_P4     0x0E  /* 频道4接收数据地址 */
+#define NRF24REG_RX_ADDR_P5     0x0F  /* 频道5接收数据地址 */
+#define NRF24REG_TX_ADDR        0x10  /* 发送地址寄存器 */
+#define NRF24REG_RX_PW_P0       0x11  /* 接收频道0接收数据长度 */
+#define NRF24REG_RX_PW_P1       0x12  /* 接收频道1接收数据长度 */
+#define NRF24REG_RX_PW_P2       0x13  /* 接收频道2接收数据长度 */
+#define NRF24REG_RX_PW_P3       0x14  /* 接收频道3接收数据长度 */
+#define NRF24REG_RX_PW_P4       0x15  /* 接收频道4接收数据长度 */
+#define NRF24REG_RX_PW_P5       0x16  /* 接收频道5接收数据长度 */
+#define NRF24REG_FIFO_STATUS    0x17  /* FIFO栈入栈出状态寄存器设置 */
+#define NRF24REG_DYNPD          0x1C  /* 动态数据包长度 */
+#define NRF24REG_FEATURE        0x1D  /* 特点寄存器 */  
+/* 寄存器功能位掩码部分映射 */
+/* CONFIG */
+#define NRF24BITMASK_RX_DR      ((uint8_t)(1<<6))  /* 接收完成中断使能位 */
+#define NRF24BITMASK_TX_DS      ((uint8_t)(1<<5))  /* 发送完成中断使能位 */
+#define NRF24BITMASK_MAX_RT     ((uint8_t)(1<<4))  /* 达最大重发次数中断使能位 */
+#define NRF24BITMASK_EN_CRC     ((uint8_t)(1<<3))  /* CRC使能位 */
+#define NRF24BITMASK_CRCO       ((uint8_t)(1<<2))  /* CRC编码方式(1B or 2B) */
+#define NRF24BITMASK_PWR_UP     ((uint8_t)(1<<1))  /* 上(掉)电 */
+#define NRF24BITMASK_PRIM_RX    ((uint8_t)(1))     /* PR(T)X */
+/* SETUP_AW */
+#define NRF24BITMASK_AW         ((uint8_t)(0x03))  /* RX/TX地址宽度 */
+/* SETUP_RETR */
+#define NRF24BITMASK_ARD        ((uint8_t)(0xF0))  /* 重发延时 */
+#define NRF24BITMASK_ARC        ((uint8_t)(0x0F))  /* 重发最大次数 */
+/* RF_CH */
+#define NRF24BITMASK_RF_CH      ((uint8_t)(0x7F))  /* 射频频道 */
+/* RF_SETUP */
+#define NRF24BITMASK_RF_DR      ((uint8_t)(1<<3))  /* 空中速率 */
+#define NRF24BITMASK_RF_PWR     ((uint8_t)(0x06))  /* 发射功率 */
+/* STATUS */
+#define NRF24BITMASK_RX_DR      ((uint8_t)(1<<6))  /* 接收完成标志位 */
+#define NRF24BITMASK_TX_DS      ((uint8_t)(1<<5))  /* 发送完成标志位 */
+#define NRF24BITMASK_MAX_RT     ((uint8_t)(1<<4))  /* 最大重发次数标志位 */
+#define NRF24BITMASK_RX_P_NO    ((uint8_t)(0x0E))  /* RX_FIFO状态标志区位 */
+#define NRF24BITMASK_TX_FULL    ((uint8_t)(1))     /* TX_FIFO满标志位 */
+/* OBSERVE_TX */
+#define NRF24BITMASK_PLOS_CNT   ((uint8_t)(0xF0))  /* 丢包计数 */
+#define NRF24BITMASK_ARC_CNT    ((uint8_t)(0x0F))  /* 重发计数 */
+/* CD */
+#define NRF24BITMASK_CD         ((uint8_t)(1))     /* 载波检测标志位 */
+/* 通用掩码，RX_PW_P[0::5] 掩码相同 */
+#define NRF24BITMASK_RX_PW_P_   ((uint8_t)(0x3F))  /* 数据管道RX-Payload中的字节数 */
+/* FIFO_STATUS */
+#define NRF24BITMASK_TX_REUSE   ((uint8_t)(1<<6))  /*  */ 
+#define NRF24BITMASK_TX_FULL2   ((uint8_t)(1<<5))  /*  */ 
+#define NRF24BITMASK_TX_EMPTY   ((uint8_t)(1<<4))  /*  */ 
+#define NRF24BITMASK_RX_RXFULL  ((uint8_t)(1<<1))  /*  */ 
+#define NRF24BITMASK_RX_EMPTY   ((uint8_t)(1))     /*  */ 
+/* FEATURE */
+#define NRF24BITMASK_EN_DPL     ((uint8_t)(1<<2))  /* 动态长度使能位 */
+#define NRF24BITMASK_EN_ACK_PAY ((uint8_t)(1<<1))  /* Payload with ACK 使能位 */
+#define NRF24BITMASK_EN_DYN_ACK ((uint8_t)(1))     /* W_TX_PAYLOAD_NOACK 命令使能位 */
+/* 通用掩码，适用于多个寄存器：EN_AA, EN_RXADDR, DYNPD */
+#define NRF24BITMASK_PIPE_0     ((uint8_t)(1))     /* 接收数据通道0有效数据宽度(1~32字节) */ 
+#define NRF24BITMASK_PIPE_1     ((uint8_t)(1<<1))  /* 接收数据通道1有效数据宽度(1~32字节) */ 
+#define NRF24BITMASK_PIPE_2     ((uint8_t)(1<<2))  /* 接收数据通道2有效数据宽度(1~32字节) */ 
+#define NRF24BITMASK_PIPE_3     ((uint8_t)(1<<3))  /* 接收数据通道3有效数据宽度(1~32字节) */ 
+#define NRF24BITMASK_PIPE_4     ((uint8_t)(1<<4))  /* 接收数据通道4有效数据宽度(1~32字节) */ 
+#define NRF24BITMASK_PIPE_5     ((uint8_t)(1<<5))  /* 接收数据通道5有效数据宽度(1~32字节) */ 
 
 /* Exported variables ----------------------------------------------------------------------*/
 static uint16_t l_error_count = 0;
 extern hal_nrf24l01_port_t hal_nrf24l01_port;
 
 /* Exported functions ----------------------------------------------------------------------*/  
-
 
 
 static uint8_t _read_reg(uint8_t reg)
@@ -212,8 +211,8 @@ static void set_air_data_rate(nrf24_adr_et adr)
 
 static void set_rf_power(nrf24_power_et pa)
 {
-    if ((pa == RF_POWER_0dBm) ||
-        (pa == RF_POWER_N6dBm) ||
+    if ((pa == RF_POWER_0dBm)   ||
+        (pa == RF_POWER_N6dBm)  ||
         (pa == RF_POWER_N12dBm) ||
         (pa == RF_POWER_N18dBm))
     {
@@ -254,14 +253,14 @@ static void set_crc(nrf24_crc_et crc)
 
 static void set_esb_param(nrf24_esb_t *pt)
 {
-    // avoid ARD equals 250us
+    /* avoid ARD equals 250us */
     if (pt->ard == 0)
         pt->ard += 1;
     _set_auto_retransmit_delay(pt->ard);
     _set_auto_retransmit_count(pt->arc);
 }
 
-// bit: RX_DR, TX_DS, MAX_RT
+/* bit: RX_DR, TX_DS, MAX_RT */
 static void reset_status(uint8_t bitmask)
 {
     bitmask |= _read_reg(NRF24REG_STATUS);
@@ -273,7 +272,7 @@ static void reset_observe_tx(void)
     _write_reg(NRF24REG_OBSERVE_TX, 0);
 }
 
-//[note] the NRF24CMD_R_RX_PL_WID command doesn't work?!
+/* [note] the NRF24CMD_R_RX_PL_WID command doesn't work?! */
 static uint8_t get_top_rxfifo_width(void)
 {
     uint8_t temp = NRF24CMD_R_RX_PL_WID;
@@ -282,9 +281,11 @@ static uint8_t get_top_rxfifo_width(void)
     return temp;
 }
 
-// [note] enable activate-command befor enable_dpl
-// pipe range: 0 ~ 5
-// will also enable ENAA_PX to
+/* 
+ * [note] enable activate-command befor enable_dpl
+ * pipe range: 0 ~ 5
+ * will also enable ENAA_PX to
+ */
 static void enable_dpl_and_ackpayload(uint8_t pipe)
 {
     if (pipe > 5)
@@ -355,7 +356,7 @@ static void flush_rx_fifo(void)
     hal_nrf24l01_port.write(&temp, 1);
 }
 
-// note: will clear the error-counter
+/* note: will clear the error-counter */
 uint16_t nrf24_get_errcnt(void)
 {
     uint16_t temp = l_error_count;
@@ -401,7 +402,7 @@ int nrf24_ptx_run(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen)
         sta = _read_reg(NRF24REG_STATUS);
         if (sta & NRF24BITMASK_MAX_RT)
         {
-            // send failed; try again
+            /* send failed; try again */
             reset_status(NRF24BITMASK_MAX_RT);
 
             if (++trycnt > 6)
@@ -450,7 +451,7 @@ int nrf24_prx_cycle(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen)
     {
         rlen = get_top_rxfifo_width();
         read_rxpayload(pb_rx, rlen);
-        // flush_rx_fifo();
+        flush_rx_fifo();
         if ((tlen > 0) && (tlen <= 32))
         {
             write_ack_payload(0, pb_tx, tlen);
@@ -467,9 +468,7 @@ void nrf24_prx_write_txbuffer(const uint8_t *pb, uint8_t len)
     write_ack_payload(0, pb, len);
 }
 
-/**
- * Please refer to nrf24_ptx_run
- */
+/* Please refer to nrf24_ptx_run */
 int nrf24_irq_ptx_run(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen, void (*waitirq)(void))
 {
     int rlen = 0;
@@ -504,7 +503,7 @@ int nrf24_irq_ptx_run(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen, void (
     }
     else
     {
-        // shouldn't run to here
+        /* shouldn't run to here */
         rlen = -2;
     }
 
@@ -513,9 +512,7 @@ int nrf24_irq_ptx_run(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen, void (
     return rlen;
 }
 
-/**
- * Please refer to nrf24_prx_cycle
- */
+/* Please refer to nrf24_prx_cycle */
 int nrf24_irq_prx_run(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen, void (*waitirq)(void))
 {
     int rlen = 0;
@@ -530,13 +527,13 @@ int nrf24_irq_prx_run(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen, void (
 void nrf24_default_param(nrf24_cfg_t *pt)
 {
     pt->power = RF_POWER_0dBm;
-    pt->esb.ard = 5;        // (5+1)*250 = 1500us
-    pt->esb.arc = 6;        // up to 6 times
-    pt->crc = CRC_2_BYTE;   // crc; fcs is two bytes
-    pt->adr = ADR_1Mbps;    // air data rate 1Mbps
-    pt->channel = 6;        // rf channel 6
+    pt->esb.ard = 5;        /* (5+1)*250 = 1500us */
+    pt->esb.arc = 6;        /* up to 6 times */
+    pt->crc = CRC_2_BYTE;   /* crc; fcs is two bytes */
+    pt->adr = ADR_1Mbps;    /* air data rate 1Mbps */
+    pt->channel = 6;        /* rf channel 6 */
 
-    pt->address[4] = 0x12;  // address is 0x123456789A
+    pt->address[4] = 0x12;  /* address is 0x123456789A */
     pt->address[3] = 0x34;
     pt->address[2] = 0x56;
     pt->address[1] = 0x78;
@@ -557,7 +554,7 @@ int nrf24_init(nrf24_cfg_t *pt)
 
     hal_nrf24l01_port.init(pt->ud);
 
-    send_activate_command(); // it doesn't work?
+    send_activate_command(); /* it doesn't work? */
 
     enable_dpl_and_ackpayload(0);
     set_address_width5();
@@ -569,11 +566,11 @@ int nrf24_init(nrf24_cfg_t *pt)
     set_esb_param(&pt->esb);
 
     if (pt->use_irq) {
-        //enable all irq
+        /* enable all irq */
         enabled_irq(NRF24BITMASK_RX_DR | NRF24BITMASK_TX_DS | NRF24BITMASK_MAX_RT);
     }
     else {
-        //disable all irq
+        /* disable all irq */
         disable_irq(NRF24BITMASK_RX_DR | NRF24BITMASK_TX_DS | NRF24BITMASK_MAX_RT);
     }
 
@@ -596,8 +593,7 @@ int nrf24_init(nrf24_cfg_t *pt)
     }
     else
     {
-        // never run to here
-        ;
+        ;/* never run to here */
     }
 
     return 0;
@@ -845,7 +841,7 @@ void nrf24_report(void)
     _nrf24_report_feature_reg(_read_reg(NRF24REG_FEATURE));
 }
 
-#endif // NRF24_USING_INFO_REPORT
+#endif /* NRF24_USING_INFO_REPORT */
 
 #ifdef NRF24_USING_SHELL_CMD
 #include <stdlib.h>
@@ -868,7 +864,7 @@ static void nrf24(int argc, char **argv)
     {
         nrf24_report();
     }
-#endif // NRF24_USING_INFO_REPORT
+#endif /* NRF24_USING_INFO_REPORT */
 
     if (argc < 3)
     {
@@ -908,4 +904,4 @@ static void nrf24(int argc, char **argv)
 }
 MSH_CMD_EXPORT(nrf24, nrf24l01);
 
-#endif // NRF24_USING_SHELL_CMD
+#endif /* NRF24_USING_SHELL_CMD */

@@ -3,7 +3,6 @@
 
 #include "sample.h"
 
-
 static rt_sem_t nrfirq_sem;
 
 static void _irq_init(void);
@@ -23,25 +22,31 @@ void sample_nrf24l01_task(void *param)
     nrf24_default_param(&cfg);
     halcfg.ce_pin = NRF24L01_CE_PIN;
     halcfg.spi_device_name = NRF24L01_SPI_DEVICE;    
-    cfg.role = ROLE_PTX;    // PTX
+    cfg.role = ROLE_PTX; /* PTX */
     cfg.ud = &halcfg;
-    cfg.use_irq = 1;        // True    
+    cfg.use_irq = 1;     /* True */    
     nrf24_init(&cfg);
 
     while (1) {
         rlen = nrf24_irq_ptx_run(rbuf, tbuf, rt_strlen((char *)tbuf), _waitirq);
-        if (rlen > 0) {         // sent successfully and received data
+        /* sent successfully and received data */
+        if (rlen > 0)
+        {
             rbuf[rlen] = '\0';
             rt_kputs((char *)rbuf);
             
             rt_sprintf((char *)tbuf, "i-am-PTX:%dth\r\n", cnt);
             cnt++;
         }
-        else if (rlen == 0) {   // sent successfully but no data received
+        else if (rlen == 0)
+        /* sent successfully but no data received */
+        {
             rt_sprintf((char *)tbuf, "i-am-PTX:%dth\r\n", cnt);
             cnt++;
         }
-        else {  // sent failed
+        /* sent failed */
+        else
+        {
             rt_kputs("send failed\r\n");            
         }
     }
@@ -70,9 +75,11 @@ static int nrf24l01_sample_init(void)
     rt_thread_t thread;
 
     thread = rt_thread_create("samNrfPTX", sample_nrf24l01_task, RT_NULL, 512, RT_THREAD_PRIORITY_MAX/2, 20);
-    rt_thread_startup(thread);
+    if (thread != RT_NULL)
+    {
+        rt_thread_startup(thread);
+    }
 
     return RT_EOK;
 }
-
 INIT_APP_EXPORT(nrf24l01_sample_init);
