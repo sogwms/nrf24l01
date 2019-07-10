@@ -80,22 +80,23 @@ typedef struct
 
 对于一个 nRF24L01 模块只能从中选取一个与配置（role：PTX 或 PRX）符合的使用. 详细的关于如何使用该 API 建议查看 [API 说明](/docs/api.md) 或者 [样例程序](/examples)
 
-### 辅助 （可忽略）
+### 辅助功能
 
-驱动提供了两项辅助调试的功能，以宏的方式进行开关（默认关闭），该宏位于 nrf24l01.h 中：
-
-```c
-
-// default: off
-// #define NRF24_USING_INFO_REPORT
-// #define NRF24_USING_SHELL_CMD
+驱动提供了两项辅助调试的功能，默认关闭，可在 `menuconfig` 中打开：
 
 ```
+RT-Thread online packages  --->
+    peripheral libraries and drivers  --->
+        [*] nRF24L01: Single-chip 2.4GHz wireless transceiver.  --->
+            [*] Using info report
+            [*] Using shell cmd
+```
 
-- NRF24_USING_INFO_REPORT
+- Using info report
 
-使能该宏会启用 void nrf24_report(void); 该函数会读取 nRF24L01 几乎所有的寄存器，然后进行解读并输出解读信息
+在 `menuconfig` 里选中该选项会使能宏 `NRF24_USING_INFO_REPORT`，使能该宏会启用 void nrf24_report(void); 该函数会读取 nRF24L01 几乎所有的寄存器，然后进行解读并输出解读信息
 
-- NRF24_USING_SHELL_CMD
+- Using shell cmd
 
-使能该宏会添加一 msh 命令 nrf24，使用该命令可以对 nRF24L01 进行初始化、读写寄存器等
+在 `menuconfig` 里选中该选项会使能宏 `NRF24_USING_SHELL_CMD`，使能该宏会添加一 msh 命令 nrf24，使用该命令可以对 nRF24L01 进行初始化、读写寄存器等
+

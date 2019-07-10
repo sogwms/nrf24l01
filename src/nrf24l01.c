@@ -860,7 +860,9 @@ static void nrf24(int argc, char **argv)
         rt_kprintf("          portinit [spiDevice]\r\n");
         rt_kprintf("          readreg [regAddr]\r\n");
         rt_kprintf("          writereg [regAddr] [data]\r\n");
+#ifdef NRF24_USING_INFO_REPORT
         rt_kprintf("          report\r\n");
+#endif // NRF24_USING_INFO_REPORT
         return;
     }    
 #ifdef NRF24_USING_INFO_REPORT
