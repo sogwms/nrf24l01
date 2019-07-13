@@ -10,10 +10,6 @@
 #ifndef __NRF24L01_H__
 #define __NRF24L01_H__
 
-// default: off
-// #define NRF24_USING_INFO_REPORT
-// #define NRF24_USING_SHELL_CMD
-
 /* Includes --------------------------------------------------------------------------------*/
 #include "nrf24l01_port.h"
 /* Exported types --------------------------------------------------------------------------*/
