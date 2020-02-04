@@ -6,17 +6,31 @@
  * Change Logs:
  * Date           Author       Notes
  * 2019-05-23     sogwms       the first version
+ * 2020-02-02     sogwms       refactor to object-oriented and make simplification and ...
  */
 #ifndef __NRF24L01_H__
 #define __NRF24L01_H__
 
-/* Includes --------------------------------------------------------------------------------*/
 #include "nrf24l01_port.h"
-/* Exported types --------------------------------------------------------------------------*/
+
+#define NRF24_DEFAULT_PIPE      NRF24_PIPE_0
+
+enum 
+{
+    NRF24_PIPE_NONE = 8,
+    NRF24_PIPE_0 = 0,
+    NRF24_PIPE_1,
+    NRF24_PIPE_2,
+    NRF24_PIPE_3,
+    NRF24_PIPE_4,
+    NRF24_PIPE_5,
+};
+
 typedef enum
 {
-    ROLE_PTX = 0xF0,
-    ROLE_PRX = 0xF1,
+    ROLE_NONE = 2,
+    ROLE_PTX = 0,
+    ROLE_PRX = 1,
 } nrf24_role_et;
 
 typedef enum
@@ -29,7 +43,7 @@ typedef enum
 
 typedef enum
 {
-    CRC_0_BYTE = 0xF0,
+    // CRC_NONE = 2,
     CRC_1_BYTE = 0,
     CRC_2_BYTE = 1,
 } nrf24_crc_et;
@@ -48,43 +62,91 @@ typedef enum
     ADR_2Mbps = 1,
 } nrf24_adr_et;
 
-typedef struct
+/* User-oriented configuration */
+struct nrf24_cfg
 {
-    uint8_t ard : 4;    // meaning: (ard+1)*250us; value '0' isn't recommended
-    uint8_t arc : 4;
-} nrf24_esb_t;
-
-typedef struct
-{
-    nrf24_esb_t esb;
-
     nrf24_role_et role;
     nrf24_power_et power;
-    nrf24_adr_et adr;
     nrf24_crc_et crc;
-    uint8_t address[5];
-    uint8_t channel;    //range: 0 ~ 127
+    nrf24_adr_et adr;
+    uint8_t channel :7;    //range: 0 ~ 127 (frequency:)
 
-    uint8_t use_irq;
-    void *ud;
-} nrf24_cfg_t;
+    int _irq_pin;
+    
+    uint8_t txaddr[5];
 
-/* Exported constants ----------------------------------------------------------------------*/
-/* Exported macro --------------------------------------------------------------------------*/ 
-/* Exported variables ----------------------------------------------------------------------*/
-/* Exported functions ----------------------------------------------------------------------*/  
-extern void nrf24_default_param(nrf24_cfg_t *pt);
-extern int nrf24_init(nrf24_cfg_t *pt);
-extern int nrf24_ptx_run(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen);
-extern int nrf24_prx_cycle(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen);
-extern void nrf24_prx_write_txbuffer(const uint8_t *pb, uint8_t len);
-extern int nrf24_irq_ptx_run(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen, void(*waitirq)(void));
-extern int nrf24_irq_prx_run(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen, void(*waitirq)(void));
-extern uint16_t nrf24_get_errcnt(void);
-extern void nrf24_power_up(void);
-extern void nrf24_power_down(void);
-#ifdef NRF24_USING_INFO_REPORT
-void nrf24_report(void);
-#endif // NRF24_USING_INFO_REPORT
+    struct {
+        uint8_t bl_enabled;
+        uint8_t addr[5];
+    } rxpipe0;
+    
+    struct {
+        uint8_t bl_enabled;
+        uint8_t addr[5];
+    } rxpipe1;
+
+    struct {
+        uint8_t bl_enabled;
+        uint8_t addr;
+    } rxpipe2;
+    
+    struct {
+        uint8_t bl_enabled;
+        uint8_t addr;
+    } rxpipe3;
+    
+    struct {
+        uint8_t bl_enabled;
+        uint8_t addr;
+    } rxpipe4;
+    
+    struct {
+        uint8_t bl_enabled;
+        uint8_t addr;
+    } rxpipe5;
+};
+
+typedef struct nrf24_cfg *nrf24_cfg_t;
+
+typedef struct nrf24 *nrf24_t;
+
+struct nrf24_callback
+{
+    void (*rx_ind)(nrf24_t nrf24, uint8_t *data, uint8_t len, int pipe);
+    void (*tx_done)(nrf24_t nrf24, int pipe);
+};
+
+struct nrf24
+{
+    struct hal_nrf24_port halport;
+    struct nrf24_cfg cfg;
+    struct nrf24_callback cb;
+
+    struct {
+        uint8_t activated_features      :1;
+        uint8_t using_irq               :1;
+    } flags;
+
+    uint8_t status;
+
+    rt_sem_t sem;   // irq
+    rt_sem_t send_sem;
+};
+
+// int nrf24_update_txaddr(nrf24_t nrf24, uint8_t addr[5]);
+// int nrf24_update_rxaddr(nrf24_t nrf24, int pipe, uint8_t addr[5]);
+
+int nrf24_init(nrf24_t nrf24, char *spi_dev_name, int ce_pin, int irq_pin, const struct nrf24_callback *cb, const nrf24_cfg_t cfg);
+nrf24_t nrf24_create(char *spi_dev_name, int ce_pin, int irq_pin, const struct nrf24_callback *cb, const nrf24_cfg_t cfg);
+
+int nrf24_default_init(nrf24_t nrf24, char *spi_dev_name, int ce_pin, int irq_pin, const struct nrf24_callback *cb, nrf24_role_et role);
+nrf24_t nrf24_default_create(char *spi_dev_name, int ce_pin, int irq_pin, const struct nrf24_callback *cb, nrf24_role_et role);
+
+void nrf24_enter_power_down_mode(nrf24_t nrf24);
+void nrf24_enter_power_up_mode(nrf24_t nrf24);
+
+int nrf24_fill_default_config_on(nrf24_cfg_t cfg);
+int nrf24_send_data(nrf24_t nrf24, uint8_t *data, uint8_t len, uint8_t pipe);
+int nrf24_run(nrf24_t nrf24);
 
 #endif // __NRF24L01_H__

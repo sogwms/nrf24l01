@@ -6,18 +6,28 @@
  * Change Logs:
  * Date           Author       Notes
  * 2019-05-23     sogwms       the first version
+ * 2020-02-02     sogwms       refactor to object-oriented and make simplification and ...
  */
 
 // note: 地址宽度:5
-// note: ACTIVATE command
 
 /* Includes --------------------------------------------------------------------------------*/
 #include <rtthread.h>
 #include "nrf24l01.h"
 
-/* Exported types --------------------------------------------------------------------------*/
-/* Exported constants ----------------------------------------------------------------------*/
-/* Exported macro --------------------------------------------------------------------------*/ 
+#define DBG_SECTION_NAME  "nrf24l01"
+#define DBG_LEVEL         DBG_LOG
+#include <rtdbg.h>
+
+#ifdef PKG_NRF24L01_ENABLING_DEBUG
+#ifdef PKG_NRF24L01_USING_INFO_REPORT
+    #define NRF24_USING_INFO_REPORT
+#endif
+#ifdef PKG_NRF24L01_USING_SHELL_CMD
+    #define NRF24_USING_SHELL_CMD
+#endif
+#endif
+
 ///<命令映射  
 #define NRF24CMD_R_REG          0x00  // 读寄存器
 #define NRF24CMD_W_REG          0x20  // 写寄存器
@@ -106,55 +116,133 @@
 #define NRF24BITMASK_PIPE_4     ((uint8_t)(1<<4))  // 
 #define NRF24BITMASK_PIPE_5     ((uint8_t)(1<<5))  // 
 
-/* Exported variables ----------------------------------------------------------------------*/
-static uint16_t l_error_count = 0;
-extern hal_nrf24l01_port_t hal_nrf24l01_port;
+struct nrf24_onchip_cfg
+{
+    struct {
+        uint8_t prim_rx     :1;
+        uint8_t pwr_up      :1;
+        uint8_t crco        :1;
+        uint8_t en_crc      :1;
+        uint8_t mask_max_rt :1;
+        uint8_t mask_tx_ds  :1;
+        uint8_t mask_rx_dr  :1;
+    } config;
 
-/* Exported functions ----------------------------------------------------------------------*/  
+    struct {
+        uint8_t p0          :1;
+        uint8_t p1          :1;
+        uint8_t p2          :1;
+        uint8_t p3          :1;
+        uint8_t p4          :1;
+        uint8_t p5          :1;
+    } en_aa;
 
-static uint8_t __read_reg(uint8_t reg)
+    struct {
+        uint8_t p0          :1;
+        uint8_t p1          :1;
+        uint8_t p2          :1;
+        uint8_t p3          :1;
+        uint8_t p4          :1;
+        uint8_t p5          :1;
+    } en_rxaddr;
+
+    struct {
+        uint8_t aw          :2;
+    } setup_aw;
+
+    struct {
+        uint8_t arc         :4;
+        uint8_t ard         :4;
+    } setup_retr;
+
+    struct {
+        uint8_t rf_ch       :7;
+    } rf_ch;
+
+    struct {
+        uint8_t lna_hcurr   :1;
+        uint8_t rf_pwr      :2;
+        uint8_t rf_dr       :1;
+        uint8_t pll_lock    :1;
+    } rf_setup;
+
+    struct {
+        uint8_t p0          :1;
+        uint8_t p1          :1;
+        uint8_t p2          :1;
+        uint8_t p3          :1;
+        uint8_t p4          :1;
+        uint8_t p5          :1;
+    } dynpd;
+
+    struct {
+        uint8_t en_dyn_ack  :1;
+        uint8_t en_ack_pay  :1;
+        uint8_t en_dpl      :1;
+    } feature;
+
+    uint8_t rx_addr_p0[5];
+    uint8_t rx_addr_p1[5];
+    uint8_t rx_addr_p2;
+    uint8_t rx_addr_p3;
+    uint8_t rx_addr_p4;
+    uint8_t rx_addr_p5;
+
+    uint8_t tx_addr[5];
+
+}ALIGN(1);
+
+#ifdef NRF24_USING_SHELL_CMD
+    nrf24_t g_debug_nrf24 = RT_NULL;
+#endif
+
+/** S PORT-ORIENTED */
+/** |||||| **/
+
+static uint8_t __read_reg(nrf24_t nrf24, uint8_t reg)
 {
     uint8_t tmp, rtmp = 0;
 
     tmp = NRF24CMD_R_REG | reg;
-    hal_nrf24l01_port.send_then_recv(&tmp, 1, &rtmp, 1);
-
+    NRF24_HALPORT_SEND_THEN_RECV(&tmp, 1, &rtmp, 1);
     return rtmp;
 }
 
-static void __write_reg(uint8_t reg, uint8_t data)
+static void __write_reg(nrf24_t nrf24, uint8_t reg, uint8_t data)
 {
     uint8_t tmp[2];
 
     tmp[0] = NRF24CMD_W_REG | reg;
     tmp[1] = data;
-    hal_nrf24l01_port.write(&tmp[0], 2);
+    NRF24_HALPORT_WRITE(&tmp[0], 2);
 }
+
+// /**
+//  * @brief Set bit(s) to 1 based on bit-mask
+//  * @param[in] mask: bit mask.   e.g 0x81 stands for bit7 and bit0
+//  */
+// static void __set_reg_bits(nrf24_t nrf24, uint8_t reg, uint8_t mask)
+// {
+//     uint8_t tmp;
+
+//     tmp = __read_reg(nrf24, reg);
+//     tmp |= mask;
+//     __write_reg(nrf24, reg, tmp);
+// }
+
+// static void __reset_reg_bits(nrf24_t nrf24, uint8_t reg, uint8_t mask)
+// {
+//     uint8_t tmp;
+
+//     tmp = __read_reg(nrf24, reg);
+//     tmp &= ~mask;
+//     __write_reg(nrf24, reg, tmp);
+// }
 
 /**
- * @brief 置位寄存器的部分位
- * @param[in] reg: 寄存器地址
- * @param[in] mask: 位掩码. eg: 0x81 标识置位第七位和第零位
+ * @brief Treat the specified continuous bit as a whole and then set its value
  */
-static void __set_reg_bits(uint8_t reg, uint8_t mask)
-{
-    uint8_t tmp;
-
-    tmp = __read_reg(reg);
-    tmp |= mask;
-    __write_reg(reg, tmp);
-}
-
-static void __reset_reg_bits(uint8_t reg, uint8_t mask)
-{
-    uint8_t tmp;
-
-    tmp = __read_reg(reg);
-    tmp &= ~mask;
-    __write_reg(reg, tmp);
-}
-
-static void __write_reg_bits(uint8_t reg, uint8_t mask, uint8_t value)
+static void __write_reg_bits(nrf24_t nrf24, uint8_t reg, uint8_t mask, uint8_t value)
 {
     uint8_t tmp, tidx;
 
@@ -163,161 +251,75 @@ static void __write_reg_bits(uint8_t reg, uint8_t mask, uint8_t value)
         if (mask & (1 << tidx))
             break;
     }
-    tmp = ~mask & __read_reg(reg);
+    tmp = ~mask & __read_reg(nrf24, reg);
     tmp |= mask & (value << tidx);
-    __write_reg(reg, tmp);
+    __write_reg(nrf24, reg, tmp);
 }
 
-static void send_activate_command(void)
-{
-    uint8_t tmp[2] = {
-        NRF24CMD_ACTIVATE,
-        0x73};
-    hal_nrf24l01_port.write(tmp, 2);
-}
+/** E PORT-ORIENTED*/
 
-static void set_address_width5(void)
-{
-    __write_reg(NRF24REG_SETUP_AW, 0x3);
-}
+/** S SCALPEL */
+/** |||||| **/
 
-static void set_tx_rp0_address5(const uint8_t *pb)
+static uint8_t read_status(nrf24_t nrf24)
 {
-    uint8_t tmp;
-
-    tmp = NRF24CMD_W_REG | NRF24REG_RX_ADDR_P0;
-    hal_nrf24l01_port.send_then_send(&tmp, 1, pb, 5);
-    tmp = NRF24CMD_W_REG | NRF24REG_TX_ADDR;
-    hal_nrf24l01_port.send_then_send(&tmp, 1, pb, 5);
-}
-
-static void set_rf_channel(uint8_t channel)
-{
-    __write_reg(NRF24REG_RF_CH, channel & 0x7F);
-}
-
-static void set_air_data_rate(nrf24_adr_et adr)
-{
-    if (adr == ADR_1Mbps)
-    {
-        __reset_reg_bits(NRF24REG_RF_SETUP, NRF24BITMASK_RF_DR);
-    }
-    else if (adr == ADR_2Mbps)
-    {
-        __set_reg_bits(NRF24REG_RF_SETUP, NRF24BITMASK_RF_DR);
-    }
-}
-
-static void set_rf_power(nrf24_power_et pa)
-{
-    if ((pa == RF_POWER_0dBm) ||
-        (pa == RF_POWER_N6dBm) ||
-        (pa == RF_POWER_N12dBm) ||
-        (pa == RF_POWER_N18dBm))
-    {
-        __write_reg_bits(NRF24REG_RF_SETUP, NRF24BITMASK_RF_PWR, pa);
-    }
-}
-
-static void _set_auto_retransmit_delay(uint8_t ard)
-{
-    __write_reg_bits(NRF24REG_SETUP_RETR, NRF24BITMASK_ARD, ard);
-}
-
-static void _set_auto_retransmit_count(uint8_t arc)
-{
-    __write_reg_bits(NRF24REG_SETUP_RETR, NRF24BITMASK_ARC, arc);
-}
-
-static void set_crc(nrf24_crc_et crc)
-{
-    if (crc == CRC_0_BYTE)
-    {
-        __reset_reg_bits(NRF24REG_CONFIG, NRF24BITMASK_EN_CRC);
-    }
-    else
-    {
-        if (crc == CRC_1_BYTE)
-        {
-            __set_reg_bits(NRF24REG_CONFIG, NRF24BITMASK_EN_CRC);
-            __reset_reg_bits(NRF24REG_CONFIG, NRF24BITMASK_CRCO);
-        }
-        else if (crc == CRC_2_BYTE)
-        {
-            __set_reg_bits(NRF24REG_CONFIG, NRF24BITMASK_EN_CRC);
-            __set_reg_bits(NRF24REG_CONFIG, NRF24BITMASK_CRCO);
-        }
-    }
-}
-
-static void set_esb_param(nrf24_esb_t *pt)
-{
-    // avoid ARD equals 250us
-    if (pt->ard == 0)
-        pt->ard += 1;
-    _set_auto_retransmit_delay(pt->ard);
-    _set_auto_retransmit_count(pt->arc);
+    return __read_reg(nrf24, NRF24REG_STATUS);
 }
 
 // bit: RX_DR, TX_DS, MAX_RT
-static void reset_status(uint8_t bitmask)
+static void clear_status(nrf24_t nrf24, uint8_t bitmask)
 {
-    bitmask |= __read_reg(NRF24REG_STATUS);
-    __write_reg(NRF24REG_STATUS, bitmask);
+    __write_reg(nrf24, NRF24REG_STATUS, bitmask);
 }
 
-static void reset_observe_tx(void)
+static void clear_observe_tx(nrf24_t nrf24)
 {
-    __write_reg(NRF24REG_OBSERVE_TX, 0);
+    __write_reg(nrf24, NRF24REG_OBSERVE_TX, 0);
 }
 
-//[note] the NRF24CMD_R_RX_PL_WID command doesn't work?!
-static uint8_t get_top_rxfifo_width(void)
+static uint8_t read_top_rxfifo_width(nrf24_t nrf24)
 {
     uint8_t tmp = NRF24CMD_R_RX_PL_WID;
 
-    hal_nrf24l01_port.send_then_recv(&tmp, 1, &tmp, 1);
+    NRF24_HALPORT_SEND_THEN_RECV(&tmp, 1, &tmp, 1);
     return tmp;
 }
 
-// [note] enable activate-command befor enable_dpl
-// pipe range: 0 ~ 5
-// will also enable ENAA_PX to
-static void enable_dpl_and_ackpayload(uint8_t pipe)
+void nrf24_enter_power_down_mode(nrf24_t nrf24)
 {
-    if (pipe > 5)
-        return;
-
-    __set_reg_bits(NRF24REG_FEATURE, NRF24BITMASK_EN_ACK_PAY);
-    __set_reg_bits(NRF24REG_FEATURE, NRF24BITMASK_EN_DPL);
-    __set_reg_bits(NRF24REG_EN_AA, (1 << pipe));
-    __set_reg_bits(NRF24REG_DYNPD, (1 << pipe));
+    __write_reg_bits(nrf24, NRF24REG_CONFIG, NRF24BITMASK_PWR_UP, 0);
 }
 
-static void enabled_irq(uint8_t bitmask)
+void nrf24_enter_power_up_mode(nrf24_t nrf24)
 {
-    if (!((bitmask == NRF24BITMASK_RX_DR) || (bitmask == NRF24BITMASK_TX_DS) || (bitmask == NRF24BITMASK_MAX_RT)))
-        return;
-
-    __reset_reg_bits(NRF24REG_CONFIG, bitmask);
+    __write_reg_bits(nrf24, NRF24REG_CONFIG, NRF24BITMASK_PWR_UP, 1);
 }
 
-static void disable_irq(uint8_t bitmask)
-{
-    if (!((bitmask == NRF24BITMASK_RX_DR) || (bitmask == NRF24BITMASK_TX_DS) || (bitmask == NRF24BITMASK_MAX_RT)))
-        return;
+// static void enabled_irq(nrf24_t nrf24, uint8_t bitmask)
+// {
+//     if (!((bitmask == NRF24BITMASK_RX_DR) || (bitmask == NRF24BITMASK_TX_DS) || (bitmask == NRF24BITMASK_MAX_RT)))
+//         return;
 
-    __set_reg_bits(NRF24REG_CONFIG, bitmask);
-}
+//     __reset_reg_bits(nrf24, NRF24REG_CONFIG, bitmask);
+// }
 
-static void write_tx_payload(const uint8_t *pb, uint8_t len)
+// static void disable_irq(nrf24_t nrf24, uint8_t bitmask)
+// {
+//     if (!((bitmask == NRF24BITMASK_RX_DR) || (bitmask == NRF24BITMASK_TX_DS) || (bitmask == NRF24BITMASK_MAX_RT)))
+//         return;
+
+//     __set_reg_bits(nrf24, NRF24REG_CONFIG, bitmask);
+// }
+
+
+static void write_tx_payload(nrf24_t nrf24, const uint8_t *buf, uint8_t len)
 {
     uint8_t tmp = NRF24CMD_W_TX_PAYLOAD;
 
-    hal_nrf24l01_port.send_then_send(&tmp, 1, pb, len);
+    NRF24_HALPORT_SEND_THEN_SEND(&tmp, 1, buf, len);
 }
 
-static void write_ack_payload(uint8_t pipe, const uint8_t *pb, uint8_t len)
+static void write_ack_payload(nrf24_t nrf24, uint8_t pipe, const uint8_t *buf, uint8_t len)
 {
     uint8_t tmp;
 
@@ -325,10 +327,20 @@ static void write_ack_payload(uint8_t pipe, const uint8_t *pb, uint8_t len)
         return;
 
     tmp = NRF24CMD_W_ACK_PAYLOAD | pipe;
-    hal_nrf24l01_port.send_then_send(&tmp, 1, pb, len);
+    NRF24_HALPORT_SEND_THEN_SEND(&tmp, 1, buf, len);
 }
 
-static void read_rxpayload(uint8_t *pb, uint8_t len)
+// static int read_rx_payload_width(nrf24_t nrf24, uint8_t pipe)
+// {
+//     if (pipe > 5)
+//         return 0;
+
+//     uint8_t len = __read_reg(nrf24, NRF24REG_RX_PW_P0+pipe);
+
+//     return len;
+// }
+
+static void read_rx_payload(nrf24_t nrf24, uint8_t *buf, uint8_t len)
 {
     uint8_t tcmd;
 
@@ -336,270 +348,483 @@ static void read_rxpayload(uint8_t *pb, uint8_t len)
         return;
 
     tcmd = NRF24CMD_R_RX_PAYLOAD;
-    hal_nrf24l01_port.send_then_recv(&tcmd, 1, pb, len);
+    NRF24_HALPORT_SEND_THEN_RECV(&tcmd, 1, buf, len);
 }
 
-static void flush_tx_fifo(void)
+static void flush_tx_fifo(nrf24_t nrf24)
 {
     uint8_t tmp = NRF24CMD_FLUSH_TX;
 
-    hal_nrf24l01_port.write(&tmp, 1);
+    NRF24_HALPORT_WRITE(&tmp, 1);
 }
 
-static void flush_rx_fifo(void)
+static void flush_rx_fifo(nrf24_t nrf24)
 {
     uint8_t tmp = NRF24CMD_FLUSH_RX;
 
-    hal_nrf24l01_port.write(&tmp, 1);
+    NRF24_HALPORT_WRITE(&tmp, 1);
 }
 
-// note: will clear the error-counter
-uint16_t nrf24_get_errcnt(void)
+/** E SCALPEL */
+
+static void ensure_rww_features_activated(nrf24_t nrf24)
 {
-    uint16_t tmp = l_error_count;
-    l_error_count = 0;
+    if (!nrf24->flags.activated_features)
+    {
+        uint8_t tmp[2] = {NRF24CMD_ACTIVATE, 0x73};
+        NRF24_HALPORT_WRITE(tmp, 2);
+        nrf24->flags.activated_features = RT_TRUE;
+    }
+}
+
+static int update_onchip_config(nrf24_t nrf24, const struct nrf24_onchip_cfg *ccfg)
+{
+    uint8_t tmp;
+
+    nrf24_enter_power_down_mode(nrf24);
+    ensure_rww_features_activated(nrf24);
+
+    __write_reg(nrf24, NRF24REG_EN_AA,      *((uint8_t *)&ccfg->en_aa));
+    __write_reg(nrf24, NRF24REG_EN_RXADDR,  *((uint8_t *)&ccfg->en_rxaddr));
+    __write_reg(nrf24, NRF24REG_SETUP_AW,   *((uint8_t *)&ccfg->setup_aw));
+    __write_reg(nrf24, NRF24REG_SETUP_RETR, *((uint8_t *)&ccfg->setup_retr));
+    __write_reg(nrf24, NRF24REG_RF_CH,      *((uint8_t *)&ccfg->rf_ch));
+    __write_reg(nrf24, NRF24REG_RF_SETUP,   *((uint8_t *)&ccfg->rf_setup));
+    __write_reg(nrf24, NRF24REG_DYNPD,      *((uint8_t *)&ccfg->dynpd));
+    __write_reg(nrf24, NRF24REG_FEATURE,    *((uint8_t *)&ccfg->feature));
+
+    tmp = NRF24CMD_W_REG | NRF24REG_TX_ADDR;
+    NRF24_HALPORT_SEND_THEN_SEND(&tmp, 1, ccfg->tx_addr, 5);
+    tmp = NRF24CMD_W_REG | NRF24REG_RX_ADDR_P0;
+    NRF24_HALPORT_SEND_THEN_SEND(&tmp, 1, ccfg->rx_addr_p0, 5);
+    tmp = NRF24CMD_W_REG | NRF24REG_RX_ADDR_P1;
+    NRF24_HALPORT_SEND_THEN_SEND(&tmp, 1, ccfg->rx_addr_p1, 5);
+    tmp = NRF24CMD_W_REG | NRF24REG_RX_ADDR_P2;
+    NRF24_HALPORT_SEND_THEN_SEND(&tmp, 1, &ccfg->rx_addr_p2, 1);
+    tmp = NRF24CMD_W_REG | NRF24REG_RX_ADDR_P3;
+    NRF24_HALPORT_SEND_THEN_SEND(&tmp, 1, &ccfg->rx_addr_p3, 1);
+    tmp = NRF24CMD_W_REG | NRF24REG_RX_ADDR_P4;
+    NRF24_HALPORT_SEND_THEN_SEND(&tmp, 1, &ccfg->rx_addr_p4, 1);
+    tmp = NRF24CMD_W_REG | NRF24REG_RX_ADDR_P5;
+    NRF24_HALPORT_SEND_THEN_SEND(&tmp, 1, &ccfg->rx_addr_p5, 1);
+
+    __write_reg(nrf24, NRF24REG_CONFIG,     *((uint8_t *)&ccfg->config));
+
+    return RT_EOK;
+}
+
+static int read_onchip_config(nrf24_t nrf24, struct nrf24_onchip_cfg *ccfg)
+{
+    struct nrf24_onchip_cfg real_cfg;
+    uint8_t tmp;
+
+    *((uint8_t *)&real_cfg.en_aa)      =  __read_reg(nrf24, NRF24REG_EN_AA);
+    *((uint8_t *)&real_cfg.en_rxaddr)  =  __read_reg(nrf24, NRF24REG_EN_RXADDR);
+    *((uint8_t *)&real_cfg.setup_aw)   =  __read_reg(nrf24, NRF24REG_SETUP_AW);
+    *((uint8_t *)&real_cfg.setup_retr) =  __read_reg(nrf24, NRF24REG_SETUP_RETR);
+    *((uint8_t *)&real_cfg.rf_ch)      =  __read_reg(nrf24, NRF24REG_RF_CH);
+    *((uint8_t *)&real_cfg.rf_setup)   =  __read_reg(nrf24, NRF24REG_RF_SETUP);
+    *((uint8_t *)&real_cfg.dynpd)      =  __read_reg(nrf24, NRF24REG_DYNPD);
+    *((uint8_t *)&real_cfg.feature)    =  __read_reg(nrf24, NRF24REG_FEATURE);
+    *((uint8_t *)&real_cfg.config)     =  __read_reg(nrf24, NRF24REG_CONFIG);
+
+    tmp = NRF24CMD_R_REG | NRF24REG_TX_ADDR;
+    NRF24_HALPORT_SEND_THEN_RECV(&tmp, 1, (uint8_t *)&real_cfg.tx_addr, 5);
+    tmp = NRF24CMD_R_REG | NRF24REG_RX_ADDR_P0;
+    NRF24_HALPORT_SEND_THEN_RECV(&tmp, 1, (uint8_t *)&real_cfg.rx_addr_p0, 5);
+    tmp = NRF24CMD_R_REG | NRF24REG_RX_ADDR_P1;
+    NRF24_HALPORT_SEND_THEN_RECV(&tmp, 1, (uint8_t *)&real_cfg.rx_addr_p1, 5);
+    tmp = NRF24CMD_R_REG | NRF24REG_RX_ADDR_P2;
+    NRF24_HALPORT_SEND_THEN_RECV(&tmp, 1, (uint8_t *)&real_cfg.rx_addr_p2, 1);
+    tmp = NRF24CMD_R_REG | NRF24REG_RX_ADDR_P3;
+    NRF24_HALPORT_SEND_THEN_RECV(&tmp, 1, (uint8_t *)&real_cfg.rx_addr_p3, 1);
+    tmp = NRF24CMD_R_REG | NRF24REG_RX_ADDR_P4;
+    NRF24_HALPORT_SEND_THEN_RECV(&tmp, 1, (uint8_t *)&real_cfg.rx_addr_p4, 1);
+    tmp = NRF24CMD_R_REG | NRF24REG_RX_ADDR_P5;
+    NRF24_HALPORT_SEND_THEN_RECV(&tmp, 1, (uint8_t *)&real_cfg.rx_addr_p5, 1);
+
+    rt_memcpy(ccfg, &real_cfg, sizeof(struct nrf24_onchip_cfg));
+
+    return RT_EOK;
+}
+
+static int check_onchip_config(nrf24_t nrf24, const struct nrf24_onchip_cfg *ccfg)
+{
+    struct nrf24_onchip_cfg real_cfg;
+
+    read_onchip_config(nrf24, &real_cfg);
+
+    if (rt_memcmp(&real_cfg, ccfg, sizeof(struct nrf24_onchip_cfg)) == 0)
+        return RT_EOK;
+    else
+        return RT_ERROR;
+}
+
+static int build_onchip_config(struct nrf24_onchip_cfg *ccfg, const struct nrf24_cfg *ucfg)
+{
+    rt_memset(ccfg, 0, sizeof(struct nrf24_onchip_cfg));
+
+    /* Default config */
+    ccfg->setup_retr.ard = 1;   // 500us
+    ccfg->setup_retr.arc = 11;  // 11 times
+    ccfg->setup_aw.aw = 3;      // 5-byte address width
+
+    ccfg->rf_setup.pll_lock = 0;
+    ccfg->rf_setup.lna_hcurr = 1;
+
+    ccfg->en_aa.p0 = 1;
+    ccfg->en_aa.p1 = 1;
+    ccfg->en_aa.p2 = 1;
+    ccfg->en_aa.p3 = 1;
+    ccfg->en_aa.p4 = 1;
+    ccfg->en_aa.p5 = 1;
+
+    ccfg->dynpd.p0 = 1;
+    ccfg->dynpd.p1 = 1;
+    ccfg->dynpd.p2 = 1;
+    ccfg->dynpd.p3 = 1;
+    ccfg->dynpd.p4 = 1;
+    ccfg->dynpd.p5 = 1;
+
+    ccfg->feature.en_dyn_ack = 1;
+    ccfg->feature.en_ack_pay = 1;
+    ccfg->feature.en_dpl = 1;
+    /* END Default config*/
+
+    /**/
+    if (ucfg->_irq_pin == NRF24_PIN_NONE)
+    {
+        ccfg->config.mask_rx_dr = 1;
+        ccfg->config.mask_tx_ds = 1;
+        ccfg->config.mask_max_rt = 1;
+    }
     
-    return tmp;
-}
+    ccfg->config.pwr_up = 1;
+    ccfg->config.prim_rx = ucfg->role;
+    ccfg->config.en_crc = 1;
+    ccfg->config.crco = ucfg->crc;
 
-void nrf24_power_up(void)
-{
-    __set_reg_bits(NRF24REG_CONFIG, NRF24BITMASK_PWR_UP);
-}
+    ccfg->rf_setup.rf_pwr = ucfg->power;
+    ccfg->rf_setup.rf_dr = ucfg->adr;
+    ccfg->rf_ch.rf_ch = ucfg->channel;
 
-void nrf24_power_down(void)
-{
-    __reset_reg_bits(NRF24REG_CONFIG, NRF24BITMASK_PWR_UP);
-}
+    rt_memcpy(ccfg->tx_addr, ucfg->txaddr, sizeof(ucfg->txaddr));
 
-/**
- * @brief PTX(ROLE) run
- * @param[in] pb_tx: pointer of tx-buffer
- * @param[out] pb_rx: pointer of rx-buffer
- * @param tlen: size of pb_tx (by bytes)
- * @return Zero indicates sent complete but no data received;
- *         Negative number indicates error;
- *         Other indicates the number of bytes of received data, and indicates that sent is complete 
- * 
- * @attention Send data and then received data 
- */
-int nrf24_ptx_run(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen)
-{
-    uint8_t sta, trycnt = 0, rlen = 0;
+    ccfg->en_rxaddr.p0 = ucfg->rxpipe0.bl_enabled;
+    ccfg->en_rxaddr.p1 = ucfg->rxpipe1.bl_enabled;
+    ccfg->en_rxaddr.p2 = ucfg->rxpipe2.bl_enabled;
+    ccfg->en_rxaddr.p3 = ucfg->rxpipe3.bl_enabled;
+    ccfg->en_rxaddr.p4 = ucfg->rxpipe4.bl_enabled;
+    ccfg->en_rxaddr.p5 = ucfg->rxpipe5.bl_enabled;
 
-    if (tlen > 32)
-        return -6;
+    rt_memcpy(ccfg->rx_addr_p0, ucfg->rxpipe0.addr, sizeof(ucfg->rxpipe0.addr));
+    rt_memcpy(ccfg->rx_addr_p1, ucfg->rxpipe1.addr, sizeof(ucfg->rxpipe1.addr));
+    ccfg->rx_addr_p2 = ucfg->rxpipe2.addr;
+    ccfg->rx_addr_p3 = ucfg->rxpipe3.addr;
+    ccfg->rx_addr_p4 = ucfg->rxpipe4.addr;
+    ccfg->rx_addr_p5 = ucfg->rxpipe5.addr;
 
-    write_tx_payload(pb_tx, tlen);
-
-    hal_nrf24l01_port.set_ce();
-
-    do
-    {
-        sta = __read_reg(NRF24REG_STATUS);
-        if (sta & NRF24BITMASK_MAX_RT)
-        {
-            // send failed; try again
-            reset_status(NRF24BITMASK_MAX_RT);
-
-            if (++trycnt > 6)
-            {
-                hal_nrf24l01_port.reset_ce();
-                flush_tx_fifo();
-                reset_status(NRF24BITMASK_MAX_RT);
-
-                l_error_count++;
-
-                return -1;
-            }
-        }
-    } while (!(sta & NRF24BITMASK_TX_DS));
-    reset_status(NRF24BITMASK_TX_DS);
-
-    if (sta & NRF24BITMASK_RX_DR)
-    {
-        reset_status(NRF24BITMASK_RX_DR);
-        rlen = get_top_rxfifo_width();
-        read_rxpayload(pb_rx, rlen);
-    }
-
-    hal_nrf24l01_port.reset_ce();
-
-    return rlen;
+    return RT_EOK;
 }
 
 /**
- * @brief PRX(ROLE) cycle
- * @param[out] pb_rx: pointer of rx-buffer
- * @param[in] pb_tx: pointer of tx-buffer
- * @param tlen: size of pb_tx (by bytes)
- * @return Zero indicates no data received;
- *         Negative number indicates error;          
- *         Other indicates the number of bytes of received data, and indicates that sent is complete 
- * 
- * @attention Receive data and then send data
+ * Test the connection with NRF24
  */
-int nrf24_prx_cycle(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen)
+static int check_halport(hal_nrf24_port_t halport)
 {
-    uint8_t sta, rlen = 0;
+    uint8_t addr[5] = {1,2,3,4,5}, backup_addr[5];
+    uint8_t tmp;
 
-    sta = __read_reg(NRF24REG_FIFO_STATUS);
-    if (!(sta & NRF24BITMASK_RX_EMPTY))
+    RT_ASSERT(halport != RT_NULL);
+    RT_ASSERT(halport->ops != RT_NULL);
+
+    tmp = NRF24CMD_R_REG | NRF24REG_RX_ADDR_P1;
+    halport->ops->send_then_recv(halport, &tmp, 1, backup_addr, 5);
+
+    tmp = NRF24CMD_W_REG | NRF24REG_RX_ADDR_P1;
+    halport->ops->send_then_send(halport, &tmp, 1, addr, 5);
+
+    rt_memset(addr, 0, 5);
+
+    tmp = NRF24CMD_R_REG | NRF24REG_RX_ADDR_P1;
+    halport->ops->send_then_recv(halport, &tmp, 1, addr, 5);
+
+    for (int i = 0; i < 5; i++)
     {
-        rlen = get_top_rxfifo_width();
-        read_rxpayload(pb_rx, rlen);
-        // flush_rx_fifo();
-        if ((tlen > 0) && (tlen <= 32))
-        {
-            write_ack_payload(0, pb_tx, tlen);
-        }
+        if (addr[i] != i+1)
+            return RT_ERROR;
     }
 
-    return rlen;
+    tmp = NRF24CMD_W_REG | NRF24REG_RX_ADDR_P1;
+    halport->ops->send_then_send(halport, &tmp, 1, backup_addr, 5);
+
+    return RT_EOK;
 }
 
-void nrf24_prx_write_txbuffer(const uint8_t *pb, uint8_t len)
+/**
+ * Set the user-oriented configuration as the default
+ */
+int nrf24_fill_default_config_on(nrf24_cfg_t cfg)
+{
+    RT_ASSERT(cfg != RT_NULL);
+
+    rt_memset(cfg, 0, sizeof(struct nrf24_cfg));
+
+    cfg->power = RF_POWER_0dBm;
+    cfg->crc = CRC_2_BYTE;
+    cfg->adr = ADR_2Mbps;
+    cfg->channel = 100;
+    cfg->role = ROLE_NONE;
+
+    for (int i = 0; i < 5; i++)
+    {
+        cfg->txaddr[i] = i;
+        cfg->rxpipe0.addr[i] = i;
+        cfg->rxpipe1.addr[i] = i+1;
+    }
+    cfg->rxpipe2.addr = 2;
+    cfg->rxpipe3.addr = 3;
+    cfg->rxpipe4.addr = 4;
+    cfg->rxpipe5.addr = 5;
+
+    cfg->rxpipe0.bl_enabled = RT_TRUE;
+    cfg->rxpipe1.bl_enabled = RT_TRUE;
+
+    cfg->rxpipe2.bl_enabled = RT_FALSE;
+    cfg->rxpipe3.bl_enabled = RT_FALSE;
+    cfg->rxpipe4.bl_enabled = RT_FALSE;
+    cfg->rxpipe5.bl_enabled = RT_FALSE;
+
+    return RT_EOK;
+}
+
+int nrf24_send_data(nrf24_t nrf24, uint8_t *data, uint8_t len, uint8_t pipe)
 {
     if (len > 32)
-        return;
-    write_ack_payload(0, pb, len);
+        return RT_ERROR;
+
+    if (nrf24->cfg.role == ROLE_PTX)
+    {
+        write_tx_payload(nrf24, data, len);
+    }
+    else
+    {
+        write_ack_payload(nrf24, pipe, data, len);
+        rt_sem_release(nrf24->send_sem);
+    }
+    
+    return RT_EOK;
+}
+
+void __irq_handler(hal_nrf24_port_t halport)
+{
+    nrf24_t nrf24 = (nrf24_t)halport;
+
+    rt_sem_release(nrf24->sem);
 }
 
 /**
- * Please refer to nrf24_ptx_run
+ * ? if try to create sem with the existing name, what will happen
  */
-int nrf24_irq_ptx_run(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen, void (*waitirq)(void))
+int nrf24_init(nrf24_t nrf24, char *spi_dev_name, int ce_pin, int irq_pin, const struct nrf24_callback *cb, const nrf24_cfg_t cfg)
 {
-    int rlen = 0;
-    uint8_t sta;
+    struct nrf24_onchip_cfg onchip_cfg;
 
-    if (tlen > 32)
-        return -6;
+    RT_ASSERT(nrf24 != RT_NULL);
+    RT_ASSERT(cfg != RT_NULL);
 
-    write_tx_payload(pb_tx, tlen);
-    hal_nrf24l01_port.set_ce();
-    (*waitirq)();
-    sta = __read_reg(NRF24REG_STATUS);
-    if (sta & NRF24BITMASK_TX_DS)
+    RT_ASSERT(cb != RT_NULL);
+
+    rt_memset(nrf24, 0, sizeof(struct nrf24));
+
+    nrf24->send_sem = rt_sem_create("nrfsend", 0, RT_IPC_FLAG_FIFO);
+    if (nrf24->send_sem == RT_NULL)
     {
-        reset_status(NRF24BITMASK_TX_DS);
-        if (sta & NRF24BITMASK_RX_DR)
+        LOG_E("Failed to create sem");
+        return RT_ERROR;
+    }
+
+    if (irq_pin != NRF24_PIN_NONE)
+    {
+        nrf24->sem = rt_sem_create("nrfirq", 0, RT_IPC_FLAG_FIFO);
+        if (nrf24->sem == RT_NULL)
         {
-            reset_status(NRF24BITMASK_RX_DR);
-            rlen = get_top_rxfifo_width();
-            read_rxpayload(pb_rx, rlen);
+            LOG_E("Failed to create sem");
+            return RT_ERROR;
+        }
+
+        nrf24->flags.using_irq = RT_TRUE;
+    }
+    else
+    {
+        nrf24->flags.using_irq = RT_FALSE;
+    }
+
+    rt_memcpy(&nrf24->cb, cb, sizeof(struct nrf24_callback));
+    rt_memcpy(&nrf24->cfg, cfg, sizeof(struct nrf24_cfg));
+    nrf24->cfg._irq_pin = irq_pin;
+
+    if (hal_nrf24_port_init(&nrf24->halport, spi_dev_name, ce_pin, irq_pin, __irq_handler) != RT_EOK)
+        return RT_ERROR;
+
+    if (check_halport(&nrf24->halport) != RT_EOK)
+        return RT_ERROR;
+
+    if (build_onchip_config(&onchip_cfg, &nrf24->cfg) != RT_EOK)
+        return RT_ERROR;
+
+    if (update_onchip_config(nrf24, &onchip_cfg) != RT_EOK)
+        return RT_ERROR;
+
+    if (check_onchip_config(nrf24, &onchip_cfg) != RT_EOK)
+        return RT_ERROR;
+
+    flush_tx_fifo(nrf24);
+    flush_rx_fifo(nrf24);
+    clear_status(nrf24, NRF24BITMASK_RX_DR | NRF24BITMASK_TX_DS | NRF24BITMASK_MAX_RT);
+    clear_observe_tx(nrf24);
+
+    nrf24_enter_power_up_mode(nrf24);
+    nrf24->halport.ops->set_ce(&nrf24->halport);
+
+    LOG_I("Successfully initialized");
+
+#ifdef NRF24_USING_SHELL_CMD
+    g_debug_nrf24 = nrf24;
+#endif
+
+    return RT_EOK;
+}
+
+nrf24_t nrf24_create(char *spi_dev_name, int ce_pin, int irq_pin, const struct nrf24_callback *cb, const nrf24_cfg_t cfg)
+{
+    RT_ASSERT(cfg != RT_NULL);
+
+    nrf24_t new_nrf24 = (nrf24_t)rt_malloc(sizeof(struct nrf24));
+    if (new_nrf24 == RT_NULL)
+    {
+        rt_free(new_nrf24);
+        LOG_E("Failed to allocate memory!");
+    }
+    else
+    {
+        if (nrf24_init(new_nrf24, spi_dev_name, ce_pin, irq_pin, cb, cfg) != RT_EOK)
+        {
+            rt_free(new_nrf24);
+            new_nrf24 = RT_NULL;
         }
     }
-    else if (sta & NRF24BITMASK_MAX_RT)
-    {
-        hal_nrf24l01_port.reset_ce();
-        flush_tx_fifo();
-        reset_status(NRF24BITMASK_MAX_RT);
-        
-        l_error_count++;
 
-        rlen = -1;
+    if (new_nrf24 == RT_NULL)
+        LOG_E("Failed to create nrf24 instance");
+
+    return new_nrf24;
+}
+
+int nrf24_default_init(nrf24_t nrf24, char *spi_dev_name, int ce_pin, int irq_pin, const struct nrf24_callback *cb, nrf24_role_et role)
+{
+    struct nrf24_cfg cfg;
+
+    nrf24_fill_default_config_on(&cfg);
+    cfg.role = role;
+    return nrf24_init(nrf24, spi_dev_name, ce_pin, irq_pin, cb, &cfg);
+}
+
+nrf24_t nrf24_default_create(char *spi_dev_name, int ce_pin, int irq_pin, const struct nrf24_callback *cb, nrf24_role_et role)
+{
+    nrf24_t new_nrf24 = (nrf24_t)rt_malloc(sizeof(struct nrf24));
+    if (new_nrf24 == RT_NULL)
+    {
+        rt_free(new_nrf24);
+        LOG_E("Failed to allocate memory!");
     }
     else
     {
-        // shouldn't run to here
-        rlen = -2;
+        if (nrf24_default_init(new_nrf24, spi_dev_name, ce_pin, irq_pin, cb, role) != RT_EOK)
+        {
+            rt_free(new_nrf24);
+            new_nrf24 = RT_NULL;
+        }
     }
 
-    hal_nrf24l01_port.reset_ce();
+    if (new_nrf24 == RT_NULL)
+        LOG_E("Failed to create nrf24 instance");
 
-    return rlen;
+    return new_nrf24;
 }
 
 /**
- * Please refer to nrf24_prx_cycle
+ * check status and inform
+ * @param nrf24 pointer of nrf24 instance
+ * @return -x:error   0:nothing   1:tx_done   2:rx_done   3:tx_rx_done
  */
-int nrf24_irq_prx_run(uint8_t *pb_rx, const uint8_t *pb_tx, uint8_t tlen, void (*waitirq)(void))
+int nrf24_run(nrf24_t nrf24)
 {
-    int rlen = 0;
+    int rvl = 0;
 
-    (*waitirq)();
-    reset_status(NRF24BITMASK_RX_DR | NRF24BITMASK_TX_DS);
-    rlen = nrf24_prx_cycle(pb_rx, pb_tx, tlen);
-
-    return rlen;
-}
-
-void nrf24_default_param(nrf24_cfg_t *pt)
-{
-    pt->power = RF_POWER_0dBm;
-    pt->esb.ard = 5;        // (5+1)*250 = 1500us
-    pt->esb.arc = 6;        // up to 6 times
-    pt->crc = CRC_2_BYTE;   // crc; fcs is two bytes
-    pt->adr = ADR_1Mbps;    // air data rate 1Mbps
-    pt->channel = 6;        // rf channel 6
-
-    pt->address[4] = 0x12;  // address is 0x123456789A
-    pt->address[3] = 0x34;
-    pt->address[2] = 0x56;
-    pt->address[1] = 0x78;
-    pt->address[0] = 0x9A;
-}
-
-/**
- * @return success returns 0; failure returns negative number
- */
-int nrf24_init(nrf24_cfg_t *pt)
-{
-    if ((pt->role != ROLE_PTX) && (pt->role != ROLE_PRX))
+    if (nrf24->flags.using_irq)
     {
-        rt_kprintf("[nrf24-warning]: unknown ROLE\r\n");
-        __reset_reg_bits(NRF24REG_CONFIG, NRF24BITMASK_PWR_UP);
-        return -1;
+        rt_sem_take(nrf24->sem, RT_WAITING_FOREVER);
     }
 
-    hal_nrf24l01_port.init(pt->ud);
+    nrf24->status = read_status(nrf24);
+    clear_status(nrf24, NRF24BITMASK_RX_DR | NRF24BITMASK_TX_DS);
 
-    send_activate_command(); // it doesn't work?
+    uint8_t pipe = (nrf24->status & NRF24BITMASK_RX_P_NO) >> 1;
 
-    enable_dpl_and_ackpayload(0);
-    set_address_width5();
-    set_tx_rp0_address5(pt->address);
-    set_rf_power(pt->power);
-    set_rf_channel(pt->channel);
-    set_air_data_rate(pt->adr);
-    set_crc(pt->crc);
-    set_esb_param(&pt->esb);
-
-    if (pt->use_irq) {
-        //enable all irq
-        enabled_irq(NRF24BITMASK_RX_DR | NRF24BITMASK_TX_DS | NRF24BITMASK_MAX_RT);
-    }
-    else {
-        //disable all irq
-        disable_irq(NRF24BITMASK_RX_DR | NRF24BITMASK_TX_DS | NRF24BITMASK_MAX_RT);
-    }
-
-    flush_rx_fifo();
-    flush_tx_fifo();
-
-    reset_status(NRF24BITMASK_RX_DR | NRF24BITMASK_TX_DS | NRF24BITMASK_MAX_RT);
-    reset_observe_tx();
-
-    if (pt->role == ROLE_PTX)
+    if (nrf24->cfg.role == ROLE_PTX)
     {
-        __set_reg_bits(NRF24REG_CONFIG, NRF24BITMASK_PWR_UP);
-        __reset_reg_bits(NRF24REG_CONFIG, NRF24BITMASK_PRIM_RX);
-    }
-    else if (pt->role == ROLE_PRX)
-    {
-        __set_reg_bits(NRF24REG_CONFIG, NRF24BITMASK_PWR_UP);
-        __set_reg_bits(NRF24REG_CONFIG, NRF24BITMASK_PRIM_RX);
-        hal_nrf24l01_port.set_ce();
+        if (nrf24->status & NRF24BITMASK_MAX_RT)
+        {
+            flush_tx_fifo(nrf24);
+            clear_status(nrf24, NRF24BITMASK_MAX_RT);
+            if(nrf24->cb.tx_done) nrf24->cb.tx_done(nrf24, NRF24_PIPE_NONE);
+            return -1;
+        }
+
+        if (nrf24->status & NRF24BITMASK_RX_DR)
+        {
+            uint8_t data[32];
+            uint8_t len = read_top_rxfifo_width(nrf24);
+
+            read_rx_payload(nrf24, data, len);
+            if (nrf24->cb.rx_ind) nrf24->cb.rx_ind(nrf24, data, len, pipe);
+
+            rvl |= 2;
+        }
+
+        if (nrf24->status & NRF24BITMASK_TX_DS)
+        {
+            if (nrf24->cb.tx_done) nrf24->cb.tx_done(nrf24, pipe);
+
+            rvl |= 1;
+        }
     }
     else
     {
-        // never run to here
-        ;
+        if (pipe <= 5)
+        {
+            uint8_t data[32];
+            uint8_t len = read_top_rxfifo_width(nrf24);
+
+            read_rx_payload(nrf24, data, len);
+            if (nrf24->cb.rx_ind) nrf24->cb.rx_ind(nrf24, data, len, pipe);
+
+            rvl |= 2;
+
+            if (rt_sem_trytake(nrf24->send_sem) == RT_EOK)
+            {
+                if (nrf24->cb.tx_done) nrf24->cb.tx_done(nrf24, pipe);
+                rvl |= 1;
+            }
+        }
     }
 
-    return 0;
+    return rvl;
 }
+
+/** S DEBUG */
+/** |||||| **/
 
 #if defined(NRF24_USING_INFO_REPORT)
 
@@ -826,21 +1051,54 @@ void __nrf24_report_feature_reg(uint8_t data)
 
     rt_kprintf("\r\n");
 }
-void nrf24_report(void)
-{
-    __nrf24_report_config_reg(__read_reg(NRF24REG_CONFIG));
-    __nrf24_report_enaa_reg(__read_reg(NRF24REG_EN_AA));
-    __nrf24_report_enrxaddr_reg(__read_reg(NRF24REG_EN_RXADDR));
-    __nrf24_report_setupaw_reg(__read_reg(NRF24REG_SETUP_AW));
-    __nrf24_report_setupretr_reg(__read_reg(NRF24REG_SETUP_RETR));
-    __nrf24_report_rfch_reg(__read_reg(NRF24REG_RF_CH));
-    __nrf24_report_rfsetup_reg(__read_reg(NRF24REG_RF_SETUP));
-    __nrf24_report_status_reg(__read_reg(NRF24REG_STATUS));
-    __nrf24_report_observetx_reg(__read_reg(NRF24REG_OBSERVE_TX));
 
-    __nrf24_report_fifostatus_reg(__read_reg(NRF24REG_FIFO_STATUS));
-    __nrf24_report_dynpd_reg(__read_reg(NRF24REG_DYNPD));
-    __nrf24_report_feature_reg(__read_reg(NRF24REG_FEATURE));
+void __nrf24_report_addr(nrf24_t nrf24)
+{
+    struct nrf24_onchip_cfg ccfg;
+    read_onchip_config(nrf24, &ccfg);
+    rt_kprintf("tx-addr:0x%02x%02x%02x%02x%02x\n", 
+        ccfg.tx_addr[4],
+        ccfg.tx_addr[3],
+        ccfg.tx_addr[2],
+        ccfg.tx_addr[1],
+        ccfg.tx_addr[0]);
+
+    rt_kprintf("rx-addr-p0:0x%02x%02x%02x%02x%02x\n", 
+        ccfg.rx_addr_p0[4],
+        ccfg.rx_addr_p0[3],
+        ccfg.rx_addr_p0[2],
+        ccfg.rx_addr_p0[1],
+        ccfg.rx_addr_p0[0]);
+
+    rt_kprintf("rx-addr-p1:0x%02x%02x%02x%02x%02x\n", 
+        ccfg.rx_addr_p1[4],
+        ccfg.rx_addr_p1[3],
+        ccfg.rx_addr_p1[2],
+        ccfg.rx_addr_p1[1],
+        ccfg.rx_addr_p1[0]);
+
+    rt_kprintf("rx-addr-p2:0x%02x\n", ccfg.rx_addr_p2);
+    rt_kprintf("rx-addr-p3:0x%02x\n", ccfg.rx_addr_p3);
+    rt_kprintf("rx-addr-p4:0x%02x\n", ccfg.rx_addr_p4);
+    rt_kprintf("rx-addr-p5:0x%02x\n", ccfg.rx_addr_p5);
+}
+
+void nrf24_report(nrf24_t nrf24)
+{
+    __nrf24_report_config_reg(__read_reg(nrf24, NRF24REG_CONFIG));
+    __nrf24_report_enaa_reg(__read_reg(nrf24, NRF24REG_EN_AA));
+    __nrf24_report_enrxaddr_reg(__read_reg(nrf24, NRF24REG_EN_RXADDR));
+    __nrf24_report_setupaw_reg(__read_reg(nrf24, NRF24REG_SETUP_AW));
+    __nrf24_report_setupretr_reg(__read_reg(nrf24, NRF24REG_SETUP_RETR));
+    __nrf24_report_rfch_reg(__read_reg(nrf24, NRF24REG_RF_CH));
+    __nrf24_report_rfsetup_reg(__read_reg(nrf24, NRF24REG_RF_SETUP));
+    __nrf24_report_status_reg(__read_reg(nrf24, NRF24REG_STATUS));
+    __nrf24_report_observetx_reg(__read_reg(nrf24, NRF24REG_OBSERVE_TX));
+
+    __nrf24_report_fifostatus_reg(__read_reg(nrf24, NRF24REG_FIFO_STATUS));
+    __nrf24_report_dynpd_reg(__read_reg(nrf24, NRF24REG_DYNPD));
+    __nrf24_report_feature_reg(__read_reg(nrf24, NRF24REG_FEATURE));
+    __nrf24_report_addr(nrf24);
 }
 
 #endif // NRF24_USING_INFO_REPORT
@@ -850,62 +1108,88 @@ void nrf24_report(void)
 
 static void nrf24(int argc, char **argv)
 {
+    static nrf24_t instance = RT_NULL;
+
     if (argc < 2)
     {
-        rt_kprintf("USAGE: nrf24 [OPTION]\r\n");
-        rt_kprintf("[OPTION]:\r\n");
-        rt_kprintf("          init [spiDevice]\r\n");
-        rt_kprintf("          portinit [spiDevice]\r\n");
-        rt_kprintf("          readreg [regAddr]\r\n");
-        rt_kprintf("          writereg [regAddr] [data]\r\n");
+        rt_kprintf("Usage: nrf24 [OPTION]\n");
+        rt_kprintf("Options:\n");
+        rt_kprintf("    init <spi_dev_name> <ce_pin>\n");
+        rt_kprintf("    probe\n");
+        rt_kprintf("    check_halport\n");
+        rt_kprintf("    read <reg>\n");
+        rt_kprintf("    write <reg> <byte>\n");
 #ifdef NRF24_USING_INFO_REPORT
-        rt_kprintf("          report\r\n");
+        rt_kprintf("    report\n");
 #endif // NRF24_USING_INFO_REPORT
+
         return;
-    }    
+    }
+
 #ifdef NRF24_USING_INFO_REPORT
     if (!rt_strcmp(argv[1], "report"))
     {
-        nrf24_report();
+        nrf24_report(instance);
     }
 #endif // NRF24_USING_INFO_REPORT
+
+    if (!rt_strcmp(argv[1], "check_halport"))
+    {
+        if (check_halport(&instance->halport) == RT_EOK)
+            rt_kprintf("OK\n");
+        else
+            rt_kprintf("ERROR\n");
+    }
+    else if (!rt_strcmp(argv[1], "probe"))
+    {
+        if (g_debug_nrf24 != RT_NULL)
+        {
+            instance = g_debug_nrf24;
+            rt_kprintf("OK\n");
+        }
+        else
+            rt_kprintf("ERROR\n");
+    }
 
     if (argc < 3)
     {
         return;
     }
-    if (!rt_strcmp(argv[1], "readreg"))
+    if (!rt_strcmp(argv[1], "read"))
     {
         uint8_t reg = atoi(argv[2]);
-        rt_kprintf("reg:0x%x val: 0x%x\n", reg, __read_reg(reg));
-    }
-    if (!rt_strcmp(argv[1], "init"))
-    {
-        nrf24_cfg_t nrf24;
-        nrf24_default_param(&nrf24);
-        nrf24.role = ROLE_PRX;
-        nrf24.ud = argv[2];
-        nrf24_init(&nrf24);
-    }
-    else if (!rt_strcmp(argv[1], "portinit"))
-    {
-        hal_nrf24l01_port.init(argv[2]);
+        rt_kprintf("reg:0x%x val: 0x%x\n", reg, __read_reg(instance, reg));
     }
 
     if (argc < 4)
     {
         return;
     }
-    if (!rt_strcmp(argv[1], "writereg"))
+    if (!rt_strcmp(argv[1], "write"))
     {
-        if (!rt_strcmp(argv[1], "writereg"))
-        {
-            uint8_t reg = atoi(argv[2]);
-            uint8_t data = atoi(argv[3]);
-            __write_reg(reg, data);
-        }
+        uint8_t reg = atoi(argv[2]);
+        uint8_t data = atoi(argv[3]);
+        __write_reg(instance, reg, data);
+    }
+    else if (!rt_strcmp(argv[1], "init"))
+    {
+        char *name = argv[2];
+        int pin = atoi(argv[3]);
+        struct nrf24_callback cb = {0};
+
+        if (instance != RT_NULL)
+            return;
+
+        instance = nrf24_default_create(name, pin, NRF24_PIN_NONE, &cb, ROLE_PTX);
+
+        if (instance)
+            rt_kprintf("OK\n");
+        else
+            rt_kprintf("\nFAILED!\n");
     }
 }
 MSH_CMD_EXPORT(nrf24, nrf24l01);
 
 #endif // NRF24_USING_SHELL_CMD
+
+/** E DEBUG */
