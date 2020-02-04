@@ -16,6 +16,8 @@
 #define NRF24_DEMO_CE_PIN               PKG_NRF24L01_DEMO_CE_PIN
 #define NRF24_DEMO_IRQ_PIN              PKG_NRF24L01_DEMO_IRQ_PIN
 
+const static char *ROLE_TABLE[] = {"PTX", "PRX"};
+
 static void rx_ind(nrf24_t nrf24, uint8_t *data, uint8_t len, int pipe)
 {
     /*! Don't need to care the pipe if the role is ROLE_PTX */
@@ -47,7 +49,7 @@ static void tx_done(nrf24_t nrf24, int pipe)
 
     rt_kprintf(" (pipe%d)\n", pipe);
     
-    rt_sprintf(tbuf, "My role is %d [%dth]\n", nrf24->cfg.role, cnt);
+    rt_sprintf(tbuf, "My role is %s [%dth]\n", ROLE_TABLE[nrf24->cfg.role], cnt);
     nrf24_send_data(nrf24, (uint8_t *)tbuf, rt_strlen(tbuf), pipe);
 #ifdef PKG_NRF24L01_DEMO_ROLE_PTX
     rt_thread_mdelay(NRF24_DEMO_SEND_INTERVAL);
@@ -93,7 +95,7 @@ static int nrf24l01_sample_init(void)
 {
     rt_thread_t thread;
 
-    thread = rt_thread_create("nrfDemo", thread_entry, RT_NULL, 2048, RT_THREAD_PRIORITY_MAX/2, 20);
+    thread = rt_thread_create("nrfDemo", thread_entry, RT_NULL, 1024, RT_THREAD_PRIORITY_MAX/2, 20);
     rt_thread_startup(thread);
 
     return RT_EOK;
