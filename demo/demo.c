@@ -79,7 +79,7 @@ static void thread_entry(void *param)
         rt_kprintf("[nrf24/demo] running.");
     }
 
-    nrf24_send_data(nrf24, "Hi\n", 3, NRF24_DEFAULT_PIPE);
+    nrf24_send_data(nrf24, (uint8_t *)"Hi\n", 3, NRF24_DEFAULT_PIPE);
 
     while (1)
     {
