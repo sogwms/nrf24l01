@@ -9,8 +9,14 @@
  * 2020-02-02     sogwms       refactor to object-oriented and add irq support
  */
 
+#include <rtthread.h>
+
+#if defined(RTTHREAD_VERSION) && (RTTHREAD_VERSION >= RT_VERSION_CHECK(5, 0, 0))
+#else
 #include "drv_gpio.h"
 #include "drv_spi.h"
+#endif
+
 #include "nrf24l01_port.h"
 
 #define DBG_SECTION_NAME  "nrf24l01_port"
