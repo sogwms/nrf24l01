@@ -12,7 +12,9 @@
     #define NRF24_DEMO_ROLE     ROLE_PRX
 #endif
 
-#define NRF24_DEMO_SPI_DEV_NAME         PKG_NRF24L01_DEMO_SPI_DEV_NAME
+#define NRF24_DEMO_SPI_DEV_NAME         "nrf24l01"
+#define NRF24_DEMO_SPI_BUS_NAME         PKG_NRF24L01_DEMO_SPI_BUS_NAME
+#define NRF24_DEMO_CSN_PIN              PKG_NRF24L01_DEMO_CSN_PIN
 #define NRF24_DEMO_CE_PIN               PKG_NRF24L01_DEMO_CE_PIN
 #define NRF24_DEMO_IRQ_PIN              PKG_NRF24L01_DEMO_IRQ_PIN
 
@@ -94,6 +96,21 @@ static void thread_entry(void *param)
 static int nrf24l01_sample_init(void)
 {
     rt_thread_t thread;
+    rt_err_t ret;
+    static struct rt_spi_device dev_nrf24l01;
+
+    ret = rt_spi_bus_attach_device(&dev_nrf24l01, 
+                                NRF24_DEMO_SPI_DEV_NAME,
+                                NRF24_DEMO_SPI_BUS_NAME,
+                                (void *)NRF24_DEMO_CSN_PIN);
+    
+    rt_pin_mode(NRF24_DEMO_CSN_PIN, PIN_MODE_OUTPUT);
+    rt_pin_write(NRF24_DEMO_CSN_PIN, PIN_HIGH);
+
+    if (ret != RT_EOK) {
+        rt_kprintf("\ncant`t attch %s device to %s bus", NRF24_DEMO_SPI_DEV_NAME, NRF24_DEMO_SPI_BUS_NAME);
+        return -RT_EEMPTY;
+    }
 
     thread = rt_thread_create("nrfDemo", thread_entry, RT_NULL, 1024, RT_THREAD_PRIORITY_MAX/2, 20);
     rt_thread_startup(thread);
