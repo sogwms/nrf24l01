@@ -1,10 +1,20 @@
+# RT-Thread building script for bridge
+
+import os
 from building import *
-Import('rtconfig')
 
-cwd     = GetCurrentDir()
-src	= Glob('*.c')
+cwd = GetCurrentDir()
 path = [cwd]
+objs = []
 
-group = DefineGroup('nRF24L01', src, depend = ['PKG_USING_NRF24L01_DEMO'], CPPPATH = path)
+# Demos
+incdirs = [os.path.join(cwd, 'shared')]
+objs = objs + DefineGroup('nRF24L01', Glob('noop/*.c'), depend = ['NRF24L01_DEMO_NOOP'], CPPPATH = incdirs)
+objs = objs + DefineGroup('nRF24L01', Glob('listening/*.c'), depend = ['NRF24L01_DEMO_LISTENING'], CPPPATH = incdirs)
+objs = objs + DefineGroup('nRF24L01', Glob('broadcast/*.c'), depend = ['NRF24L01_DEMO_BROADCAST'], CPPPATH = incdirs)
+objs = objs + DefineGroup('nRF24L01', Glob('comm/ptx/*.c'), depend = ['NRF24L01_DEMO_COMM_PTX'], CPPPATH = incdirs)
+objs = objs + DefineGroup('nRF24L01', Glob('comm/prx/*.c'), depend = ['NRF24L01_DEMO_COMM_PRX'], CPPPATH = incdirs)
+objs = objs + DefineGroup('nRF24L01', Glob('comm/prx_irq/*.c'), depend = ['NRF24L01_DEMO_COMM_PRX_IRQ'], CPPPATH = incdirs)
+objs = objs + DefineGroup('nRF24L01', Glob('comm/ptx_irq/*.c'), depend = ['NRF24L01_DEMO_COMM_PTX_IRQ'], CPPPATH = incdirs)
 
-Return('group')
+Return('objs')

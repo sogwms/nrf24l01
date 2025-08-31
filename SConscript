@@ -4,13 +4,31 @@ import os
 from building import *
 
 cwd = GetCurrentDir()
+path = [cwd]
 objs = []
-list = os.listdir(cwd)
 
-if GetDepend('PKG_USING_NRF24L01'):
-    for d in list:
-        path = os.path.join(cwd, d)
-        if os.path.isfile(os.path.join(path, 'SConscript')):
-            objs = objs + SConscript(os.path.join(d, 'SConscript'))
+# Verify package need
+if not GetDepend('PKG_USING_NRF24L01'):
+    Return('objs')
+
+
+# Source
+src = []
+src	= src + Glob('core/src/*.c')
+src = src + Glob('platform/depimpl/*.c')
+incdirs = [
+    'core/src', 
+    'platform', 
+    'platform/depimpl', 
+]
+    
+group = DefineGroup('nRF24L01', src, depend = [''], CPPPATH = [os.path.join(cwd, x) for x in incdirs])
+objs = objs + group
+
+# Cmd
+objs = objs + DefineGroup('nRF24L01', Glob('platform/cmd/*.c'), depend = ['PKG_NRF24L01_ENABLE_SHELL_CMD'], CPPPATH = [os.path.join(cwd, x) for x in ['core/utils/cmd/incc']])
+
+# Demo
+objs = objs + SConscript(os.path.join(os.path.join(cwd, 'demo'), 'SConscript'))
 
 Return('objs')

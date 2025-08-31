@@ -1,0 +1,137 @@
+
+# Kconfig file for package nrf24l01
+menuconfig PKG_USING_NRF24L01
+    bool "nRF24L01: Single-chip 2.4GHz wireless transceiver."
+    default n
+
+if PKG_USING_NRF24L01
+
+    config PKG_NRF24L01_PATH
+        string
+        default "/packages/peripherals/nrf24l01"
+
+    choice
+        prompt "Version"
+        default PKG_USING_NRF24L01_LATEST_VERSION
+        help
+            Select the package version
+
+        config PKG_USING_NRF24L01_V100
+            bool "v1.0.0"
+
+        config PKG_USING_NRF24L01_V200
+            bool "v2.0.0"
+
+        config PKG_USING_NRF24L01_LATEST_VERSION
+            bool "latest"
+    endchoice
+
+    config PKG_NRF24L01_VER
+       string
+       default "v1.0.0"    if PKG_USING_NRF24L01_V100
+       default "v2.0.0"    if PKG_USING_NRF24L01_V200
+       default "latest"    if PKG_USING_NRF24L01_LATEST_VERSION
+
+    config PKG_NRF24L01_VERSION
+       string
+       default "v1.0.0"    if PKG_USING_NRF24L01_V100
+       default "v2.0.0"    if PKG_USING_NRF24L01_V200
+       default "latest"    if PKG_USING_NRF24L01_LATEST_VERSION
+
+    config NRF24L01_SUPPORT_AUTO_SPIDEV
+        bool "Support auto spidev"
+        default y
+
+    config PKG_NRF24L01_ENABLE_SHELL_CMD
+        bool "Enable shell command (for debug purpose)"
+        default n
+
+    if PKG_NRF24L01_ENABLE_SHELL_CMD
+        config NRF24L01_COMMAND_MANUAL_INIT
+            bool "Disable auto init"
+            default n
+    endif
+
+    config PKG_NRF24L01_DEMO
+        bool "Enable nRF24L01 Demo"
+        default n
+        help
+        Enable this option to select and run an nRF24L01 demo application.
+        Choose one demo from the list below.
+
+    if PKG_NRF24L01_DEMO
+        choice
+            prompt "Select nRF24L01 Demo"
+            default NRF24L01_DEMO_NOOP
+
+            config NRF24L01_DEMO_NOOP
+                bool "No-operation Demo (for CLI)"
+                help
+                A dummy demo that does nothing.
+                Useful for testing command parsing or shell integration.
+
+            config NRF24L01_DEMO_LISTENING
+                bool "Listening Mode Demo"
+                help
+                Demo in continuous listening mode.
+
+            config NRF24L01_DEMO_BROADCAST
+                bool "Broadcast Mode Demo"
+                help
+                Simple broadcast (transmit) without acknowledgment.
+
+            config NRF24L01_DEMO_COMM_PTX
+                bool "Communication: Primary Transmitter (PTX)"
+                help
+                PTX: Acts as the primary transmitter in a communication pair (polling).
+
+            config NRF24L01_DEMO_COMM_PRX
+                bool "Communication: Primary Receiver (PRX)"
+                help
+                PRX: Acts as the primary receiver (polling).
+
+            config NRF24L01_DEMO_COMM_PRX_IRQ
+                bool "Communication: PRX with IRQ"
+                help
+                PRX with using interrupt (IRQ).
+            
+            config NRF24L01_DEMO_COMM_PTX_IRQ
+                bool "Communication: PTX with IRQ"
+                help
+                PTX with using interrupt (IRQ).
+
+        endchoice
+
+        config NRF24L01_DEMO_HAL_AUTO_SPI_DEV
+            bool "Enable auto gen spidev"
+            depends on NRF24L01_SUPPORT_AUTO_SPIDEV
+            default y
+
+        config NRF24L01_DEMO_HAL_CE_PIN
+            string "The ce pin"
+            default "PA00"
+
+        config NRF24L01_DEMO_HAL_SPI_DEV_NAME
+            string "The spi device name"
+            default "spi10"
+
+        if NRF24L01_DEMO_HAL_AUTO_SPI_DEV
+            config NRF24L01_DEMO_HAL_SPI_BUS_NAME
+                string "The spi bus name"
+                default "spi1"
+            config NRF24L01_DEMO_HAL_CS_PIN
+                string "The cs pin"
+                default "PA01"
+        endif
+
+        if NRF24L01_DEMO_COMM_PRX_IRQ || NRF24L01_DEMO_COMM_PTX_IRQ
+
+            config PKG_NRF24L01_DEMO_HAL_IRQ_PIN
+                string "The irq pin"
+                default "PA02"
+        endif
+
+    endif
+
+endif
+
