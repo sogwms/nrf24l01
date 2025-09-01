@@ -514,3 +514,7 @@ int nrf24_global_init(void)
 
     return 0;
 }
+
+#ifdef NRF24L01_ENABLE_EXT_SOURCE
+#include "nrf24l01_ext.inc.c"
+#endif 

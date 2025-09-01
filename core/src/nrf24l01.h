@@ -8,6 +8,10 @@
  * 2025-07-26     sogwms       first version       
  */
 
+#if defined(NRF24L01_ENABLE_EXT_HEADER) || defined(NRF24L01_ENABLE_EXT_SOURCE)
+#include "nrf24l01_ext.h"
+#endif 
+
 #ifndef NRF24L01_H
 #define NRF24L01_H
 
@@ -93,14 +97,18 @@ typedef struct {
     nrf24_rxpipe_cfg_t rxpipes[6];
 } nrf24_user_cfg_t;
 
-typedef struct {
+typedef struct nrf24 {
     nrf24_dep_t dep; // Note: keep as the first member
     nrf24_role_enum_t role;
 
     uint8_t ack_pipe; // PRX txfifo target pipe
     uint8_t is_radio_on;
-} nrf24_t;
 
+#ifdef NRF24L01_ENABLE_CUSTOM_STRUCT_DATA
+    NRF24L01_CUSTOM_STRUCT_DATA_T custom_data;
+#endif
+
+} nrf24_t;
 
 extern nrf24_regval_t nrf24_default_regval_list[];
 extern const int nrf24_default_regval_list_num;
@@ -196,5 +204,6 @@ int nrf24_read_regs(nrf24_t *nrf24, uint8_t reg, uint8_t *vals, uint8_t len);
 int nrf24_write_reg(nrf24_t *nrf24, uint8_t reg, uint8_t val);
 int nrf24_write_regs(nrf24_t *nrf24, uint8_t reg, uint8_t *vals, uint8_t len);
 int nrf24_write_reg_list(nrf24_t *nrf24, const nrf24_regval_t *regvals, int num);
+
 
 #endif // NRF24L01_H

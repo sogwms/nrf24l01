@@ -44,11 +44,11 @@ RT-Thread online packages
 
 ## 3、使用 nRF24L01
 
-_**用户指南：[user_guide.md](./doc/user_guide.md)**_
+_**[用户指南](./doc/user_guide.md)**_
 
 _**具体用例：参见 demo 目录**_
 
-- 开发者指南
+_**[开发者/维护者指南](./doc/dev_guide.md)**_
 
 ## 4、注意事项
 

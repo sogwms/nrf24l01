@@ -2,7 +2,7 @@
 
 static void DEMONAME(void);
 
-#include "nrf24_demo_main.c.inc"
+#include "nrf24_demo_main.inc.c"
 
 #define NRF24_IRQ_PIN PKG_NRF24L01_DEMO_HAL_IRQ_PIN
 static rt_sem_t g_nrf24_irq_sem;

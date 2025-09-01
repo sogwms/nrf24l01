@@ -1,7 +1,8 @@
 #ifndef NRF24L01_DEP_IMPL_H
 #define NRF24L01_DEP_IMPL_H
 
-#include "nrf24l01.h"
+#include <rtthread.h>
+#include "nrf24l01_dep.h"
 
 struct nrf24_depimpl_ctx {
     char need_gen_spidev;

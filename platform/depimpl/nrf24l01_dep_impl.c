@@ -1,7 +1,6 @@
 #include <rtthread.h>
 #include <rtdevice.h>
 #include "nrf24l01_dep_impl.h"
-#include "nrf24l01_dep.h"
 
 #ifdef NRF24L01_SUPPORT_AUTO_SPIDEV
 #define DEMIMPL_SUPPORT_GEN_SPIDEV

@@ -2,7 +2,7 @@
 
 static void DEMONAME(void);
 
-#include "nrf24_demo_main.c.inc"
+#include "nrf24_demo_main.inc.c"
 
 #define UTILIZE_ALL_FIFOS
 

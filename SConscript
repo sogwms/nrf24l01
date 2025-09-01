@@ -22,7 +22,8 @@ incdirs = [
     'platform/depimpl', 
 ]
     
-group = DefineGroup('nRF24L01', src, depend = [''], CPPPATH = [os.path.join(cwd, x) for x in incdirs])
+
+group = DefineGroup('nRF24L01', src, depend = [''], CPPDEFINES=['NRF24L01_ENABLE_EXT_SOURCE'],  CPPPATH = [os.path.join(cwd, x) for x in incdirs])
 objs = objs + group
 
 # Cmd

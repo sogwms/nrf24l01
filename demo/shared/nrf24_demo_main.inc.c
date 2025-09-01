@@ -30,20 +30,17 @@ static void thread_entry(void *param)
         rt_kprintf("invalid ce pin\n");
     }
     
-    /* Init lower*/
+    /* Do initialization */
+    nrf24_global_init();
+
 #ifdef NEED_AUTO_GEN_SPIDEV
     if (rt_pin_get(VAR_CS_PIN) < 0) {
         rt_kprintf("invalid cs pin\n");
     }
-    nrf24_depimpl_init_ctx(&g_depimpl_ctx, VAR_SPI_DEV, rt_pin_get(VAR_CE_PIN), VAR_SPI_BUS, rt_pin_get(VAR_CS_PIN));
+    nrf24_init_ins_with_auto_spidev(&g_nrf24, VAR_SPI_DEV, rt_pin_get(VAR_CE_PIN), VAR_SPI_BUS, rt_pin_get(VAR_CS_PIN));
 #else
-    nrf24_depimpl_init_ctx_with_spidev(&g_depimpl_ctx, VAR_SPI_DEV, rt_pin_get(VAR_CE_PIN));
+    nrf24_init_ins(&g_nrf24, VAR_SPI_DEV, rt_pin_get(VAR_CE_PIN));
 #endif
-
-    /* Do initialization */
-    nrf24_global_init();
-
-    nrf24_init(&g_nrf24, nrf24_depimpl_get_ops(), &g_depimpl_ctx);
 
     /* Routine */
     DEMONAME();
