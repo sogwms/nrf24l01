@@ -10,7 +10,7 @@ static void DEMONAME(void)
     nrf24_usercfg_init_default(&ucfg);
     ucfg.rxpipes[0].enable = 1; // enable pipe
     ucfg.rxpipes[0].enable_aa = 0; // disable auto ack
-    nrf24_setup_full(&g_nrf24, NRF24_ROLE_PRX, &ucfg, nrf24_default_regval_list, nrf24_default_regval_list_num); 
+    nrf24_setup_custom(&g_nrf24, NRF24_ROLE_PRX, &ucfg, nrf24_default_regval_list, nrf24_default_regval_list_num); 
     
     /* Start */
     uint8_t pipe;

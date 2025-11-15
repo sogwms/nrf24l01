@@ -126,7 +126,7 @@ int nrf24_global_init(void);
 int nrf24_init(nrf24_t *nrf24, nrf24_dep_ops_t *ops, void *ops_ctx);
 int nrf24_check_device(nrf24_t *nrf24);
 int nrf24_setup(nrf24_t *nrf24, nrf24_role_enum_t role);
-int nrf24_setup_full(nrf24_t *nrf24, nrf24_role_enum_t role, const nrf24_user_cfg_t *ucfg, const nrf24_regval_t *regvals, int regvals_num);
+int nrf24_setup_custom(nrf24_t *nrf24, nrf24_role_enum_t role, const nrf24_user_cfg_t *ucfg, const nrf24_regval_t *regvals, int regvals_num);
 void nrf24_deinit(nrf24_t *nrf24);
 
 /**********/

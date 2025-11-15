@@ -378,10 +378,10 @@ int nrf24_setup(nrf24_t *nrf24, nrf24_role_enum_t role)
     nrf24_user_cfg_t ucfg;
     nrf24_usercfg_init_default(&ucfg);
 
-    return nrf24_setup_full(nrf24, role, &ucfg, nrf24_default_regval_list, sizeof(nrf24_default_regval_list)/sizeof(nrf24_default_regval_list[0])); 
+    return nrf24_setup_custom(nrf24, role, &ucfg, nrf24_default_regval_list, sizeof(nrf24_default_regval_list)/sizeof(nrf24_default_regval_list[0])); 
 }
 
-int nrf24_setup_full(nrf24_t *nrf24, nrf24_role_enum_t role, const nrf24_user_cfg_t *ucfg, const nrf24_regval_t *regvals, int regvals_num)
+int nrf24_setup_custom(nrf24_t *nrf24, nrf24_role_enum_t role, const nrf24_user_cfg_t *ucfg, const nrf24_regval_t *regvals, int regvals_num)
 {
     int ret = 0;
     LOG_V("enter %s", __func__);
